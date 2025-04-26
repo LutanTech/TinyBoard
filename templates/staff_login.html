@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Login</title>
+    <link rel="stylesheet" href="../static/css/imports/main.css">  
+    <link rel="stylesheet" href="../static/css/main/styles.css">
+    <script src="../static/js/imports/SweetAlert2.js"></script>
+
+</head>
+<body class=" ovf-y-h h-100 pd-0" style="background-image: url(../static/images/login-backg.webp);background-blend-mode: multiply; background-color: rgb(150, 249, 247); margin: 2px;">
+    <div class="container w-100 h-v100 flex col jst-cn aln-cn pd-0 mg-0 ">
+        <p id="p" class="sch-name"></p>
+        <form action="/staff_portal" class="div flex col bd-1 mg-5 mnw-300 " style="background: rgb(255, 255, 255);box-shadow: 0px 05px 10px; min-height: 300px; justify-content: space-around;" method="POST">
+            <h2>Login</h2>
+            <hr class="w-100">
+            <label for="name">Enter Your ID</label>
+             <input type="text" name="id" class="input bd-1" required placeholder="Enter Staff ID">
+             <input type="password" name="password" class="input bd-1" required placeholder="Password">
+             <input type="submit" class="btn-s-pri bg-bl cl-w" value="Login">
+        </form>
+    </div>
+</body>
+<div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <script>
+        Swal.fire({
+            icon: "{{ category }}",
+            title: "{{ message }}",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000
+        });
+    </script>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+</div>
+<script>
+    localStorage.setItem('school', 'KALULINI BOYS HIGH SCHOOL')
+    name = localStorage.getItem('school')
+    document.getElementById('p').textContent = name 
+</script>
+</html>

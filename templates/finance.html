@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+<title>{% block title %} Financials {% endblock %}</title>
+{% block content %}
+<div class="details">
+    <div class=" details flex wrap  gap-5 mg-5">
+        <div class="div bx-shd-005">
+            <h2>Finance</h2>
+            <hr class="w-100 pd-1">
+            <p>Total Billed: <span class="cl-bl">{{student.billed}}</span></p>
+            <p>Total Paid: <span class="cl-bl">{{student.paid}}</span></p>
+            <p>Total Balance: <span class="cl-bl">{{student.balance}}</span></p>
+        </div>
+        <div class="div flex gap-5">
+            <button data-href="finances?dest=statements" type="button" class="btn-s-pri bg-bl-0" onclick="window.location = this.getAttribute('data-href')">View Statements</button>
+            <button type="button" data-href="finances?dest=receipts" class="btn-s-pri bg-bl-0" onclick="window.location = this.getAttribute('data-href')">View Receipts</button>
+        </div>
+</div>
+{% endblock %}
+
+https://pngtree.com/freepng/character-default-avatar_5407167.html
+
+

@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}Staff Dashboard{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="../static/css/main/staff_dshb.css">
+<div class="flex col  pd-10 w-100">
+    <h1 class="f-s-l cl-bl txt-cn w-100">Welcome, {{ teacher.name }}</h1>
+    <p class="f-s-s cl-bl-1">Handling Grade: {{ teacher.grade }}</p>
+    <hr class="w-100">
+
+    </div>
+
+    <h2 class="f-s-l mgt-20">Available Teachers by Grade</h2>
+    <div class="table-responsive w-100 mg-t-10">
+        <table class="table w-100 bd-1 bg-w">
+            <thead class=" cl-w">
+                <tr>
+                    <th>Teacher Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Grade</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in teachers %}
+                    <tr>
+                        <td>{{ t.name }}</td>
+                        <td>{{ t.email }}</td>
+                        <td>{{ t.phone1 }}</td>
+                        <td>{{ t.grade }}</td>
+                        <td>
+                            {% if t.is_active %}
+                                <span class="cl-gr">Active</span>
+                            {% else %}
+                                <span class="cl-rd">Inactive</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="cl-rd">No teachers available.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

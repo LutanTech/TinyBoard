@@ -1,0 +1,87 @@
+{% extends 'layout.html' %}
+<title>{% block title %} Home {% endblock %}</title>
+{% block content %}
+<script src="{{url_for('static', filename='js/main/upload.js')}}" defer></script>
+
+<div class="container flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-6">
+    <form action="/add_student" method="POST" id="addStudentForm" class="w-full max-w-3xl bg-white shadow-lg rounded-2xl p-8 space-y-6">
+        <h2 class="text-3xl font-bold text-center text-blue-700 mb-6">➕ Add Student</h2>
+        
+        <!-- Student Info -->
+        <fieldset class="space-y-4">
+            <legend class="text-xl font-semibold text-gray-700 mb-4">Student Info</legend>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="st_gender" class="block mb-1 font-medium">Student's Gender</label>
+                    <select name="st_gender" class="w-full border rounded-lg p-2" required>
+                        <option value="Not Specified">-- Select --</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="rather_not_say">Rather not say</option>
+                    </select> 
+                </div>
+                <div>
+                    <label for="name" class="block mb-1 font-medium">Student Name</label>
+                    <input type="text" name="name" class="w-full border rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label for="adm" class="block mb-1 font-medium">Admission No.</label>
+                    <input type="text" name="adm" class="w-full border rounded-lg p-2" required>
+                </div>
+                <div>
+                    <label for="email" class="block mb-1 font-medium">Student/Parent Email</label>
+                    <input type="email" name="email" class="w-full border rounded-lg p-2">
+                </div>
+                <div>
+                    <label for="pic" class="block mb-1 font-medium">Student's Pic</label>
+                    <input type="file" id="pic-input" class="w-full border rounded-lg p-2" required>
+                    <input type="text" id="pic" name="pic" class="w-full border rounded-lg p-2 mt-2 hidden">
+                </div>
+                <div>
+                    <label for="grade" class="block mb-1 font-medium">Grade / Class / Stream</label>
+                    <input type="text" name="grade" class="w-full border rounded-lg p-2" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Guardian Info -->
+        <fieldset class="space-y-4 mt-6">
+            <legend class="text-xl font-semibold text-gray-700 mb-4">Guardian Info</legend>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="g_name" class="block mb-1 font-medium">Guardian Name</label>
+                    <input type="text" name="g_name" class="w-full border rounded-lg p-2">
+                </div>
+                <div>
+                    <label for="phone1" class="block mb-1 font-medium">Guardian Phone</label>
+                    <input type="tel" name="phone1" class="w-full border rounded-lg p-2">
+                </div>
+                <div>
+                    <label for="g_type" class="block mb-1 font-medium">Type of Guardian</label>
+                    <select name="g_type" class="w-full border rounded-lg p-2">
+                        <option value="Not Specified">-- Select --</option>
+                        <option value="biological">Biological Parent</option>
+                        <option value="guardian">Guardian</option>
+                    </select> 
+                </div>
+                <div>
+                    <label for="g_gender" class="block mb-1 font-medium">Guardian Gender</label>
+                    <select name="g_gender" class="w-full border rounded-lg p-2">
+                        <option value="Not Specified">-- Select --</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="rather_not_say">Rather not say</option>
+                    </select> 
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Submit Button -->
+        <div class="flex justify-center">
+            <input type="submit" value=" Submit" class="px-8 py-3 rounded-full bg-blue-600 text-white c-p font-semibold hover:bg-blue-700 transition duration-300">
+        </div>
+    </form>
+</div>
+{% endblock %}

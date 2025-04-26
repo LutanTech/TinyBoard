@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block title %}Staff Dashboard{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="../static/css/main/staff_dshb.css">
+
+<h2 class="f-s-m ">Your Students</h2>
+<div class="table-responsive w-100 mg-t-10 ovf-x-a">
+    <table class="table w-100">
+        <thead class="">
+            <tr>
+                <th>Name</th>
+                <th>Adm No.</th>
+                <th>Gender</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr style="border-bottom: 2px solid grey;" class="f-s-s" onclick="window.location.href='/student?id={{ student.id }}'">
+                <td>{{ student.name }}</td>
+                <td>{{ student.adm }}</td>
+                <td>{{ student.st_gender }}</td>
+                <td class="f-s-xs">{{ student.email }}</td>
+                <td class="f-s-s">{{ student.phone1 }}</td>
+                <td>Ksh {{ student.balance }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center;">No students found 🥲</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}

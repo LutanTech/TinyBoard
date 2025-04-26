@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Student Profile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../static/js/main/main.js"></script>
+    <script src="../static/js/imports/SweetAlert2.js"></script>
+    <style>
+        body {
+            background: linear-gradient(to right, #a1c4fd, #c2e9fb);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .profile-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 700px;
+            margin: auto;
+            margin-top: 40px;
+        }
+        .profile-img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 5px solid #c2e9fb;
+            margin-bottom: 20px;
+        }
+        input, select {
+            border: none;
+            border-bottom: 1px solid #ccc;
+            background: transparent;
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+            border-radius: 0;
+            text-align: center;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-bottom: 2px solid #4a90e2;
+            background: transparent;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="profile-card text-center">
+    <span style="cursor:pointer" id="toggleButton">
+        <i class="fas fa-pen" ></i>
+        Edit
+    </span>
+    <form action="{{ url_for('update_student', adm=student.adm) }}" method="POST">
+    <img src="{{ student.pic }}" alt="Student Picture" class="profile-img">
+    <label>Student Name:</label>
+    <input type="text" name="name" value="{{ student.name }}" required>
+
+    <p class="text-muted">Admission No: {{ student.adm }}</p>
+
+        <hr>
+
+        <div class="row text-start mt-4">
+            <div class="col-6 mb-3">
+                <label>Email:</label>
+                <input type="email" name="email" value="{{ student.email }}" required>
+            </div>
+            <div class="col-6 mb-3">
+                <label>Grade:</label>
+                <input type="text" name="grade" value="{{ student.grade }}" required>
+            </div>
+            <div class="col-6 mb-3">
+                <label>Gender:</label>
+                <select name="st_gender" required>
+                    <option value="male" {% if student.st_gender == 'male' %}selected{% endif %}>Male</option>
+                    <option value="female" {% if student.st_gender == 'female' %}selected{% endif %}>Female</option>
+                </select>
+            </div>
+            <div class="col-6 mb-3">
+                <label>Guardian Name:</label>
+                <input type="text" name="g_name" value="{{ student.g_name }}">
+            </div>
+            <div class="col-6 mb-3">
+                <label>Guardian Type:</label>
+                <input type="text" name="g_type" value="{{ student.g_type }}">
+            </div>
+            <div class="col-6 mb-3">
+                <label>Guardian Gender:</label>
+                <select name="g_gender" required>
+                    <option value="male" {% if student.g_gender == 'male' %}selected{% endif %}>Male</option>
+                    <option value="female" {% if student.g_gender == 'female' %}selected{% endif %}>Female</option>
+                </select>
+            </div>
+            <div class="col-6 mb-3">
+                <label>Phone 1:</label>
+                <input type="text" name="phone1" value="{{ student.phone1 }}" required>
+            </div>
+            {% if student.phone2 %}
+            <div class="col-6 mb-3">
+                <label>Phone 2:</label>
+                <input type="text" name="phone2" value="{{ student.phone2 }}">
+            </div>
+            {% endif %}
+            {% if student.phone3 %}
+            <div class="col-6 mb-3">
+                <label>Phone 3:</label>
+                <input type="text" name="phone3" value="{{ student.phone3 }}">
+            </div>
+            {% endif %}
+        </div>
+
+        <hr>
+
+        <div class="row text-center">
+            <div class="col-4">
+                <label>Billed</label><br>
+                <input type="number" name="billed" value="{{ student.billed }}" step="100">
+            </div>
+            <div class="col-4">
+                <label>Paid</label><br>
+                <input type="number" name="paid" value="{{ student.paid }}" step="100">
+            </div>
+            <div class="col-4">
+                <label>Balance</label><br>
+                {{ student.balance }}
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{{ url_for('students') }}" class="btn btn-secondary">Back</a>
+            <button type="submit" class="btn btn-success">Save Changes</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleState() {
+        const inputs = document.querySelectorAll('input');
+        const selects = document.querySelectorAll('select');
+    
+        const isDisabled = inputs.length > 0 && inputs[0].hasAttribute('disabled');
+    
+        if (isDisabled) {
+            inputs.forEach(input => input.removeAttribute('disabled'));
+            selects.forEach(select => select.removeAttribute('disabled'));
+    
+            Swal.fire({
+                icon: "info",
+                title: "You can now edit! ",
+                toast: true,
+                position: "top-end",
+                showConfirmButton: false,
+                timer: 3000
+            });
+        } else {
+            inputs.forEach(input => input.setAttribute('disabled', 'true'));
+            selects.forEach(select => select.setAttribute('disabled', 'true'));
+    
+            Swal.fire({
+                icon: "info",
+                title: "Editing disabled! ",
+                toast: true,
+                position: "top-end",
+                showConfirmButton: false,
+                timer: 3000
+            });
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleState()
+        const toggleButton = document.getElementById('toggleButton');
+        if (toggleButton) {
+            toggleButton.addEventListener('click', toggleState);
+        }
+    });
+    </script>
+    
+</body>
+</html>
+

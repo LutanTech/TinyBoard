@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Students</title>
+</head>
+<body>
+    <h1>Search Students</h1>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div>
+            <label for="query">Search:</label>
+            {{ form.query(class="form-control") }}
+        </div>
+        <div>
+            <label for="filter_type">Filter By:</label>
+            {{ form.filter_type(class="form-control") }}
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    {% if students.items %}
+    <h2>Search Results ({{ total_count }} found):</h2>
+    <ul>
+        {% for student in students.items %}
+        <li>
+            <strong>{{ student.name }}</strong> ({{ student.grade }}) - 
+            <a href="mailto:{{ student.email }}">{{ student.email }}</a> 
+            - {{ student.adm }} - 
+            Phone: {{ student.phone1 }}
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Pagination Links -->
+    <div>
+        {% if students.has_prev %}
+            <a href="{{ url_for('search', page=students.prev_num) }}">Previous</a>
+        {% endif %}
+        
+        <span>Page {{ students.page }} of {{ students.pages }}</span>
+        
+        {% if students.has_next %}
+            <a href="{{ url_for('search', page=students.next_num) }}">Next</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <p>No students found.</p>
+    {% endif %}
+</body>
+</html>

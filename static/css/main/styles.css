@@ -1,0 +1,204 @@
+body, html {
+    scroll-behavior: smooth;
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+::placeholder {
+    font-size: small;
+    font-style: italic;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Sidebar Menu */
+
+/* Sidebar Base */
+.sidebar {
+    width: 240px;
+    background: linear-gradient(to top, #01132d, #010939);
+    color: #fff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding-top: 10px;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    transition: width 0.5s ease;
+
+}
+
+.sidebar {
+    width: 50px; /* not too wide */
+    .logo{
+        display: none !important;
+    }
+    .dev{
+        display: none !important;
+    }
+    .pc-ul{
+        height: 80%;
+        justify-content: space-around !important;
+        }
+}
+
+.sidebar.appear {
+    width: 220px; /* not too wide */
+    .logo{
+        display:flex !important;
+    }
+    .dev{
+        display: flex !important;
+    }
+    .pc-ul{
+        height: auto;
+    }
+}
+
+/* Fix sidebar items */
+.pc-ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+.pc-ul li {
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pc-ul li:hover {
+    background: rgba(255, 255, 255, 0.312);
+    color: #00f2fe;
+}
+
+/* Push main content when sidebar opens */
+
+
+/* School Name */
+.sch-name {
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    letter-spacing: 5px;
+    font-size: xx-large;
+    text-transform: uppercase;
+    color: #333;
+}
+
+/* Logo */
+.logo {
+    width: 50px;
+    aspect-ratio: 1;
+    background: white;
+    border-radius: 50%;
+    margin: 0 auto;
+}
+
+/* Add Student Form */
+#addStudentForm input,
+#addStudentForm select {
+    font-size: small !important;
+}
+
+#addStudentForm legend {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Menu Toggle */
+.menu-toggle {
+    background: rgb(3, 3, 76);
+    position: absolute;
+    right: -35px;
+    width: 40px;
+    height: 40px;
+    z-index: 10;
+    top: 10px;
+    opacity: 1;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.menu-toggle span {
+    background: white;
+    height: 2px;
+    width: 80%;
+    transition: all 0.3s ease;
+}
+
+.menu-toggle.active span:first-of-type {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.menu-toggle.active span:nth-of-type(2) {
+    opacity: 0;
+}
+
+.menu-toggle.active span:last-of-type {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Profile Picture */
+.profile-pic {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #5578ff;
+}
+
+/* Header */
+.dash-header {
+    height: 60px;
+    background: rgb(0, 255, 238);
+    padding: 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Details section */
+.details {
+    padding: 20px;
+    gap: 20px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.details .div {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    min-width: 280px;
+    flex: 1;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow: auto;
+}
+
+.details .cl-bl {
+    color: #5578ff;
+    font-weight: bold;
+}
+
+/* Flash Container */
+.flash-container {
+    z-index: 999;
+    position: fixed;
+    top: 10px;
+    right: 10px;
+}
+
+.content{
+    margin-left: 30px;
+    background: white;
+}

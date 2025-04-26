@@ -1,0 +1,30 @@
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table th, .table td {
+    padding: 15px 20px;
+    text-align: left;
+    font-size: 16px;
+    color: #333;
+}
+
+.table thead {
+    background: linear-gradient(to right, #4facfe, #00f2fe);
+    color: white;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.table tbody tr:hover {
+    background-color: #e0f7fa;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
