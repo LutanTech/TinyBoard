@@ -2,6 +2,8 @@
 document.addEventListener('DOMContentLoaded', ()=>{
   console.log('Initialised JS')
   const links = document.querySelectorAll('.pc-ul li')
+
+  if(links){
   links.forEach(link =>{
     var dest = link.getAttribute('data-href')
     const tc = link.querySelector('.tc')
@@ -12,7 +14,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
      })
   }) 
+}
   const inputs = document.querySelectorAll('input')
+  if(inputs){
   inputs.forEach(input =>{
     let name = input.getAttribute('name')
     let labels = document.querySelectorAll('#addStudentForm legend label')
@@ -23,15 +27,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
     })
   })
-
+  }
   const mb = document.querySelector('.menu-toggle');
   const sidebar = document.querySelector('.sidebar')
+  if(mb && sidebar){
   mb.addEventListener('click', ()=>{
     mb.classList.toggle('active')
     sidebar.classList.toggle('appear')
     toggleText()
 
   })
+}
 
   function toggleText(){
     links.forEach(link=>{
@@ -42,18 +48,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const cb = document.querySelector('.closeBtn')
 const notifDiv = document.querySelector('.notifDiv')
 const notifInner = document.querySelector('.notifDiv-inner')
+if(notifDiv){
   notifDiv.addEventListener('click', (e)=>{
     if(e.target != notifInner && e.target != cb && !notifInner.contains(e.target)){
       notifAction()
     }
   })
-
+}
   const notifSeen = document.getElementById('notifInner');
   let notifs = document.querySelectorAll('.notification');
   
   notifs.forEach(notif => {
     const words = notif.innerHTML.split(/\s+/).slice(0, 20).join(' ');
-  
+if(notifSeen && notifs){
     const notifClasses = Array.from(notif.classList).filter(c => c !== 'notification');
     notifSeen.classList.add(...notifClasses);
     notifSeen.classList.add('bdr-10');
@@ -65,8 +72,9 @@ const notifInner = document.querySelector('.notifDiv-inner')
         <a href="javascript:void(0)" class="c-p f-s-s cl-bl" style="font-style:italic;" onclick="notifAction()">See More</a>
       </div>
     `;
+}
   });
-  
+
   
 })
 

@@ -12,6 +12,7 @@
     <script src="../static/js/imports/SweetAlert2.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
+
 </head>
 <body class="pd-0 mg-0 w-100 ovf-x-h ovf-y-a">
     <div class="sidebar col  ps-fx wrap aln-cn h-100">
@@ -93,8 +94,58 @@
     </div>
 
     <div class="content flex row wrap" style="margin-left: 55px !important;">
+        <form id="search-form" onsubmit="return false;">
+            <input type="text" id="search-query" placeholder="Search students..." />
+            <select id="filter-type">
+              <option value="">All</option>
+              <option value="grade">Grade</option>
+              <option value="st_gender">Gender</option>
+              <option value="subjects">Subjects</option>
+            </select>
+            <button onclick="searchStudents()">Search</button>
+          </form>
+          
+          <div id="search-results">
+            <!-- Students will magically appear here 🪄 -->
+          </div>
+          
         {% block content %}
         {% endblock %}
     </div>
 </body>
+<script>
+    function searchStudents() {
+  const query = document.getElementById('search-query').value;
+  const filterType = document.getElementById('filter-type').value;
+
+  fetch(`/search?query=${encodeURIComponent(query)}&filter_type=${encodeURIComponent(filterType)}`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const resultsDiv = document.getElementById('search-results');
+      resultsDiv.innerHTML = '';
+
+      if (data.students.length === 0) {
+        resultsDiv.innerHTML = '<p>No students found. 🕵️‍♂️</p>';
+        return;
+      }
+      document.getElementById('search-query').addEventListener('input', () => {
+  searchStudents();
+});
+
+      const ul = document.createElement('ul');
+      data.students.forEach(student => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${student.name}</strong> (${student.grade}) - ${student.email}`;
+        ul.appendChild(li);
+      });
+      resultsDiv.appendChild(ul);
+    })
+    .catch(error => {
+      console.error('Oops, something went wrong! 🧯', error);
+    });
+}
+
+</script>
 </html>

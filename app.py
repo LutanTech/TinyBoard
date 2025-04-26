@@ -129,36 +129,65 @@ class SearchForm(FlaskForm):
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     form = SearchForm()
-    students = []
-    page = request.args.get('page', 1, type=int)  # Get the current page number, default is 1
-    per_page = 10  # Number of results per page
-    total_count = 0  # Initialize total count of matching students
+    students_query = Student.query
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    total_count = 0
 
-    if form.validate_on_submit():
-        query = form.query.data
-        filter_type = form.filter_type.data
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if form.validate_on_submit() or request.method == 'GET':
+        query = form.query.data if form.validate_on_submit() else request.args.get('query', '')
+        filter_type = form.filter_type.data if form.validate_on_submit() else request.args.get('filter_type', '')
 
         if filter_type == 'grade':
-            students = Student.query.filter(Student.grade.ilike(f'%{query}%'))
+            students_query = Student.query.filter(Student.grade.ilike(f'%{query}%'))
         elif filter_type == 'st_gender':
-            students = Student.query.filter(Student.st_gender.ilike(f'%{query}%'))
+            students_query = Student.query.filter(Student.st_gender.ilike(f'%{query}%'))
         elif filter_type == 'subjects':
-            students = Student.query.filter(Student.subjects.ilike(f'%{query}%'))
-        else:  # If no specific filter is selected, search across all fields
-            students = Student.query.filter(
-                (Student.name.ilike(f'%{query}%')) | 
+            students_query = Student.query.filter(Student.subjects.ilike(f'%{query}%'))
+        else:
+            students_query = Student.query.filter(
+                (Student.name.ilike(f'%{query}%')) |
                 (Student.adm.ilike(f'%{query}%')) |
                 (Student.email.ilike(f'%{query}%')) |
                 (Student.grade.ilike(f'%{query}%'))
             )
-        
-        # Get the total count of matching results
-        total_count = students.count()
 
-        # Apply pagination
-        students = students.paginate(page=page, per_page=per_page, error_out=False)
+        total_count = students_query.count()
+        students = students_query.paginate(page=page, per_page=per_page, error_out=False)
 
-    return render_template('search_results.html', form=form, students=students, total_count=total_count)
+        if is_ajax:
+            student_list = []
+            for student in students.items:
+                student_list.append({
+                    'id': student.id,
+                    'name': student.name,
+                    'adm': student.adm,
+                    'email': student.email,
+                    'grade': student.grade,
+                    'st_gender': student.st_gender,
+                    'subjects': student.subjects
+                })
+            return jsonify({
+                'students': student_list,
+                'total_count': total_count,
+                'page': page,
+                'per_page': per_page
+            })
+        else:
+            return render_template('search_results.html', form=form, students=students, total_count=total_count)
+
+    if is_ajax:
+        return jsonify({
+            'students': [],
+            'total_count': 0,
+            'page': page,
+            'per_page': per_page
+        })
+
+    return render_template('search_results.html', form=form, students=[], total_count=0)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -272,7 +301,7 @@ def update_student():
     db.session.commit()
     
     flash('Student information updated successfully! 🎉', 'success')
-    return redirect(url_for('staff_dashboard'))
+    return redirect(url_for('students'))
 
 
 

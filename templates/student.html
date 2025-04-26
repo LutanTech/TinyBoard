@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <title>Edit Student Profile</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="../static/js/main/main.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="../static/js/imports/SweetAlert2.js"></script>
+    <script src="../static/js/main/main.js"></script>
     <style>
         body {
             background: linear-gradient(to right, #a1c4fd, #c2e9fb);
@@ -54,62 +55,65 @@
 
 <div class="profile-card text-center">
     <span style="cursor:pointer" id="toggleButton">
-        <i class="fas fa-pen" ></i>
-        Edit
+        <i class="fas fa-pen"></i> Edit
     </span>
     <form action="{{ url_for('update_student', adm=student.adm) }}" method="POST">
-    <img src="{{ student.pic }}" alt="Student Picture" class="profile-img">
-    <label>Student Name:</label>
-    <input type="text" name="name" value="{{ student.name }}" required>
+        <img src="{{ student.pic }}" alt="Student Picture" class="profile-img"><p></p>
 
-    <p class="text-muted">Admission No: {{ student.adm }}</p>
+        <label><i class="fas fa-user"></i> Student Name:</label>
+        <input type="text" name="name" value="{{ student.name }}" required>
+
+        <p class="text-muted"><i class="fas fa-hashtag"></i> Admission No: {{ student.adm }}</p>
 
         <hr>
 
         <div class="row text-start mt-4">
             <div class="col-6 mb-3">
-                <label>Email:</label>
+                <label><i class="fas fa-envelope"></i> Email:</label>
                 <input type="email" name="email" value="{{ student.email }}" required>
             </div>
             <div class="col-6 mb-3">
-                <label>Grade:</label>
+                <label><i class="fas fa-arrow-up"></i> Grade:</label>
                 <input type="text" name="grade" value="{{ student.grade }}" required>
             </div>
             <div class="col-6 mb-3">
-                <label>Gender:</label>
+                <label><i class="fas fa-venus-mars"></i> Gender:</label>
                 <select name="st_gender" required>
                     <option value="male" {% if student.st_gender == 'male' %}selected{% endif %}>Male</option>
                     <option value="female" {% if student.st_gender == 'female' %}selected{% endif %}>Female</option>
                 </select>
             </div>
             <div class="col-6 mb-3">
-                <label>Guardian Name:</label>
+                <label><i class="fas fa-user"></i> Guardian Name:</label>
                 <input type="text" name="g_name" value="{{ student.g_name }}">
             </div>
             <div class="col-6 mb-3">
-                <label>Guardian Type:</label>
-                <input type="text" name="g_type" value="{{ student.g_type }}">
+                <label><i class="fas fa-user-shield"></i> Guardian Type:</label>
+                <select name="g_type" required>
+                    <option value="biological" {% if student.g_type == 'biological' %}selected{% endif %}>Biological Parent</option>
+                    <option value="guardian" {% if student.g_type == 'guardian' %}selected{% endif %}>Guardian</option>
+                </select>
             </div>
             <div class="col-6 mb-3">
-                <label>Guardian Gender:</label>
+                <label><i class="fas fa-venus-mars"></i> Guardian Gender:</label>
                 <select name="g_gender" required>
                     <option value="male" {% if student.g_gender == 'male' %}selected{% endif %}>Male</option>
                     <option value="female" {% if student.g_gender == 'female' %}selected{% endif %}>Female</option>
                 </select>
             </div>
             <div class="col-6 mb-3">
-                <label>Phone 1:</label>
+                <label><i class="fas fa-phone"></i> Phone 1:</label>
                 <input type="text" name="phone1" value="{{ student.phone1 }}" required>
             </div>
             {% if student.phone2 %}
             <div class="col-6 mb-3">
-                <label>Phone 2:</label>
+                <label><i class="fas fa-phone"></i> Phone 2:</label>
                 <input type="text" name="phone2" value="{{ student.phone2 }}">
             </div>
             {% endif %}
             {% if student.phone3 %}
             <div class="col-6 mb-3">
-                <label>Phone 3:</label>
+                <label><i class="fas fa-phone"></i> Phone 3:</label>
                 <input type="text" name="phone3" value="{{ student.phone3 }}">
             </div>
             {% endif %}
@@ -119,16 +123,16 @@
 
         <div class="row text-center">
             <div class="col-4">
-                <label>Billed</label><br>
+                <label><i class="fas fa-dollar-sign"></i> Billed</label><br>
                 <input type="number" name="billed" value="{{ student.billed }}" step="100">
             </div>
             <div class="col-4">
-                <label>Paid</label><br>
+                <label><i class="fas fa-coins"></i> Paid</label><br>
                 <input type="number" name="paid" value="{{ student.paid }}" step="100">
             </div>
             <div class="col-4">
-                <label>Balance</label><br>
-                {{ student.balance }}
+                <label><i class="fas fa-wallet"></i> Balance</label><br>
+                <p class="mt-2">{{ student.balance }}</p>
             </div>
         </div>
 
@@ -140,48 +144,44 @@
 </div>
 
 <script>
-    function toggleState() {
-        const inputs = document.querySelectorAll('input');
-        const selects = document.querySelectorAll('select');
-    
-        const isDisabled = inputs.length > 0 && inputs[0].hasAttribute('disabled');
-    
-        if (isDisabled) {
-            inputs.forEach(input => input.removeAttribute('disabled'));
-            selects.forEach(select => select.removeAttribute('disabled'));
-    
-            Swal.fire({
-                icon: "info",
-                title: "You can now edit! ",
-                toast: true,
-                position: "top-end",
-                showConfirmButton: false,
-                timer: 3000
-            });
-        } else {
-            inputs.forEach(input => input.setAttribute('disabled', 'true'));
-            selects.forEach(select => select.setAttribute('disabled', 'true'));
-    
-            Swal.fire({
-                icon: "info",
-                title: "Editing disabled! ",
-                toast: true,
-                position: "top-end",
-                showConfirmButton: false,
-                timer: 3000
-            });
-        }
+function toggleState() {
+    const inputs = document.querySelectorAll('input');
+    const selects = document.querySelectorAll('select');
+    const isDisabled = inputs.length > 0 && inputs[0].hasAttribute('disabled');
+
+    if (isDisabled) {
+        inputs.forEach(input => input.removeAttribute('disabled'));
+        selects.forEach(select => select.removeAttribute('disabled'));
+        Swal.fire({
+            icon: "info",
+            title: "Editing enabled!",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000
+        });
+    } else {
+        inputs.forEach(input => input.setAttribute('disabled', 'true'));
+        selects.forEach(select => select.setAttribute('disabled', 'true'));
+        Swal.fire({
+            icon: "info",
+            title: "Editing disabled!",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000
+        });
     }
-    
-    document.addEventListener('DOMContentLoaded', () => {
-        toggleState()
-        const toggleButton = document.getElementById('toggleButton');
-        if (toggleButton) {
-            toggleButton.addEventListener('click', toggleState);
-        }
-    });
-    </script>
-    
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    toggleState();
+    const toggleButton = document.getElementById('toggleButton');
+    if (toggleButton) {
+        toggleButton.addEventListener('click', toggleState);
+    }
+});
+</script>
+
 </body>
 </html>
-
