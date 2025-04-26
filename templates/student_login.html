@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Portal Login</title>
 
-  <!-- Styles -->
   <link rel="stylesheet" href="../static/css/imports/main.css" />
   <link rel="stylesheet" href="../static/css/main/styles.css" />
 
-  <!-- SweetAlert -->
   <script src="../static/js/imports/SweetAlert2.js"></script>
 </head>
 
@@ -34,7 +32,6 @@
     </form>
   </div>
 
-  <!-- SweetAlert Flash Messages -->
   <div class="flash-container">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -54,11 +51,7 @@
     {% endwith %}
   </div>
 
-  <!-- School Name Loader -->
-  <script>
-  </script>
 
-  <!-- Password Eye Toggle -->
   <script>
     const eyeToggle = document.getElementById("toggleEye");
     const passwordInput = document.getElementById("password");

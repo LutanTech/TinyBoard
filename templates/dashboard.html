@@ -21,7 +21,6 @@
         <p>Total Paid: <span class="cl-bl">{{student.paid}}</span></p>
         <p>Total Balance: <span class="cl-bl">{{student.balance}}</span></p>
     
-        <!-- Progress Bar -->
         <div class="progress-container">
             <div class="progress-bar" style=`width: {{ (student.paid / student.billed * 100) if student.billed > 0 else 0 }}%;`>
                 {{ (student.paid / student.billed * 100) | round(2) if student.billed > 0 else 0 }}%

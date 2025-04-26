@@ -34,7 +34,6 @@
         {% endfor %}
     </ul>
 
-    <!-- Pagination Links -->
     <div>
         {% if students.has_prev %}
             <a href="{{ url_for('search', page=students.prev_num) }}">Previous</a>

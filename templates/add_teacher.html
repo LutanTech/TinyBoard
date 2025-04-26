@@ -54,39 +54,32 @@
     <h2>Add New Teacher</h2>
     <form action="{{ url_for('add_teacher') }}" method="POST" enctype="multipart/form-data">
         
-        <!-- Teacher Profile Picture (optional) -->
         <label>Teacher Picture:</label>
         <input type="file" name="pic">
         
-        <!-- Teacher Name -->
         <label>Teacher Name:</label>
         <input type="text" name="name" required>
 
-        <!-- Teacher Email -->
         <label>Email:</label>
         <input type="email" name="email" required>
 
-        <!-- Teacher Password -->
         <label>Password:</label>
         <input type="password" name="password" required>
 
-        <!-- Teacher Grade -->
         <label>Grade:</label>
         <input type="text" name="grade" required>
 
-        <!-- Teacher Phone 1 -->
         <label>Phone 1:</label>
         <input type="text" name="phone1" required>
 
-        <!-- Teacher Phone 2 (Optional) -->
         <label>Phone 2 (Optional):</label>
         <input type="text" name="phone2">
 
-        <!-- Admin Status -->
         <label>Admin:</label>
         <select name="is_admin">
-            <option value="True">Yes</option>
             <option value="False">No</option>
+            <option value="True">Yes</option>
+
         </select>
 
         <div class="d-flex justify-content-between mt-4">
