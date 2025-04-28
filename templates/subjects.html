@@ -1,0 +1,78 @@
+{% extends 'layout.html' %}
+<title>{% block title %} Subjects {% endblock %}</title>
+{% block content %}
+<link rel="stylesheet" href="../static/css/main/dshb.css">
+<link rel="stylesheet" href="../static/css/imports/tailwind.css">
+<style>
+            input, select {
+            border: none;
+            border-bottom: 1px solid #ccc !important;
+            background: transparent !important;
+            width: 100%  !important;
+            padding: 5px  !important;
+            margin-top: 5px  !important;
+            border-radius: 0  !important;
+            text-align: center  !important;
+        }
+        input:focus, select:focus {
+            outline: none  !important;
+            border: 0  !important;
+            border-bottom: 2px solid #4a90e2  !important;
+            background: transparent  !important;
+        }
+        label {
+            font-weight: bold  !important;
+            margin-top: 10px  !important;
+        }
+</style>
+<div class="details flex wrap jst-cn aln-cn mg-au">
+    <div class=" details flex   gap-5 mg-5">
+        {% if subjects %}
+        {% for subject in subjects %}
+        <div class="flex col jst-cn aln-cn card">
+            <h2> Subject ID: {{ subject.id }}</h2>
+            <p> Subject Name: {{ subject.name }}</p>
+            <h2>Grade: {{ subject.grade }}</h2>
+        </div>
+        {% endfor %}
+
+                {% else %}
+                <div class="div card">
+                    <p class="bld">You haven't added any Subjects </p>
+                </div>
+            {% endif %}
+            <button type="button" class="btn-s-pri bg-bl-0 bdr-40 hover-bl tr-s-ease tr-all tr-dur-05">
+                Add Subject
+            </button>
+                </div>
+                <form action="/add_subject" class="form flex col pd-10 bd-1 card bdr-10 jst-cn mn" method="POST">
+                    <label for="name">Enter Subject Name</label>
+                    <input type="text" name="name">
+                    <label for="abr"> Enter Subject Abbreviation</label>
+                    <input type="text" name="abr">
+                    <label for="grade"> Enter Grade </label>
+                    <input type="text" name="grade">
+                    <button class="btn-s-pri mgt-10 bdr-40 bg-gr-0 mg-au" type="submit">Add</button>
+                </form>
+</div>
+<div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <script>
+            Swal.fire({
+                icon: "{{ category }}",
+                html: "{{ message }}",
+                toast: true,
+                position: "top-end",
+                showConfirmButton: false,
+                timer: 3000
+            });
+        </script>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+</div>
+{% endblock %}
+
+

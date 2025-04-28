@@ -536,3 +536,31 @@
 .l-h-30{
     line-height: 30px !important;
 }
+/* weight */
+
+.bld{
+  font-weight: bold !important;
+}
+.bldr{
+  font-weight: bolder !important;
+}
+/* radius */
+.bdr-40{
+  border-radius: 40px !important;
+}
+.hover-bl{
+  &:hover{
+    background: blue !important;
+    color: white !important;
+  }
+}
+/* duration */
+.tr-all{
+  transition: all !important;
+}
+.tr-dur-05{
+  transition-duration: 0.5s !important;
+}
+.tr-s-ease{
+  transform-style: ease !important;
+}

@@ -9,11 +9,16 @@
         <h3>Student Details</h3>
         <p><strong>ADM No:</strong> <span>{{ student.adm }}</span></p>
         <p><strong>Name:</strong> <span>{{ student.name }}</span></p>
-        <p><strong>Email:</strong> <span>{{ student.email }}</span></p>
+        <p><strong>Grade/ Stream/ Class:</strong> <span>{{ student.grade }}</span></p>
         <p><strong>Gender:</strong> <span>{{ student.st_gender }}</span></p>
-        <p><strong>Primary Contact:</strong> <span>{{ student.phone1 }}</span></p>
+        <p><strong>Primary Guardian Contact:</strong> <span>{{ student.phone1 }}</span></p>
+        <hr>
+        <p><strong>Class Teacher:</strong> <span>{{ teacher.name }}</span></p>
+        <p><strong>Teacher's Contact:</strong> <span>{{ teacher.phone1 }}</span></p>
+        {% if teacher.phone2 %}
+        <p><strong>Teacher's Contact 2:</strong> <span>{{ teacher.phone2 }}</span></p>
+        {% endif %}
     </div>
-
     <div class="card finance-info">
         <p class="w-100 txt-cn"> <i class="fas fa-dollar-sign"></i> </p>
         <h3>Finance</h3>
@@ -33,7 +38,7 @@
         <h3>Notifications</h3>
         <div id="notifInner"></div>
     </div>
-
+    
     <div class="notifDiv ps-fx bg-b-0 t-0 b-0 r-0 l-0 none jst-cn aln-cn">
         <div class="closeBtn ps-fx pd-5 bg-w bdr-5 c-p us-none" onclick="notifAction()">&times;</div>
         <div class="notifDiv-inner flex col mg-au bg-w bdr-10 cl-b jst-cn pd-10 aln-cn">
@@ -51,5 +56,42 @@
             </div>
         </div>
     </div>
+<div class="card" id="subjectsDiv">
+
 </div>
+</div>
+
+
+<script>
+    function fetchSubjects(){
+  fetch(`/subjects`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'method': 'POST' }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const subjectsDiv = document.getElementById('subjectsDiv');
+      subjectsDiv.innerHTML = '';
+      
+      if (data.subjects.length === 0) {
+        subjectsDiv.innerHTML = '<p>No subjects found. 🕵️‍♂️</p>';
+        return;
+      }
+      const flDiv = document.createElement('div')
+      data.subjects.forEach(subject => {
+        flDiv.classList.add('wrap', 'bg-bl-0','card','flex','txt-cn', 'gap-10')
+        const div = document.createElement('div');
+        div.classList.add('card', 'mxw-500', 'jst-cn', 'aln-cn')
+        div.innerHTML = `<p><h2>${subject.name}</h2></p> <h4>Teacher:  ${subject.teacher}</h4> <p> Teacher's Phone: ${subject.teacher_phone}</p>  `;
+        flDiv.appendChild(div)
+      });
+      subjectsDiv.appendChild(flDiv);
+    })
+    .catch(error => {
+      console.error('Oops, something went wrong! 🧯', error);
+    });
+    }
+    document.addEventListener('DOMContentLoaded', ()=>{
+        fetchSubjects();
+    })
+</script>
 {% endblock %}

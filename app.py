@@ -42,6 +42,7 @@ class School(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 class Teacher(UserMixin, db.Model):
+    __tablename__ = 'teacher'
     id = db.Column(db.String, primary_key=True,  unique=True, default=generate_rand_id)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
@@ -66,7 +67,6 @@ class Student(UserMixin, db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
     pic = db.Column(db.String(10000000), nullable=True, default="https://i.ibb.co/wNQGbTGf/default.jpg")
-    subjects = db.Column(db.Text(), nullable=True)
     st_gender = db.Column(db.String(50), nullable=False)
     grade = db.Column(db.String(100), nullable=False)
     g_name = db.Column(db.String(500), nullable=True)
@@ -78,7 +78,8 @@ class Student(UserMixin, db.Model):
     billed = db.Column(db.Integer, nullable=False, default=5000)
     paid = db.Column(db.Integer, nullable=False, default=0)
     balance = db.Column(db.Integer, nullable=True, default=0)
-
+    subjects = db.Column(JSON, nullable=True) 
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -109,7 +110,8 @@ class Subject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(300), nullable=False)
     abr = db.Column(db.String(50), nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.grade'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    grade = db.Column(db.String, db.ForeignKey('teacher.grade'))
 
 
 from flask_wtf import FlaskForm
@@ -137,16 +139,16 @@ def search():
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if form.validate_on_submit() or request.method == 'GET':
-        query = form.query.data if form.validate_on_submit() else request.args.get('query', '')
+        query = form.query.data if form.validate_on_submit() and form.query.data != '' or ' ' else request.args.get('query', '')
         filter_type = form.filter_type.data if form.validate_on_submit() else request.args.get('filter_type', '')
-
-        if filter_type == 'grade':
+        value = form.query.data
+        if value and  filter_type == 'grade':
             students_query = Student.query.filter(Student.grade.ilike(f'%{query}%'))
-        elif filter_type == 'st_gender':
+        elif value and  filter_type == 'st_gender':
             students_query = Student.query.filter(Student.st_gender.ilike(f'%{query}%'))
-        elif filter_type == 'subjects':
+        elif value and filter_type == 'subjects':
             students_query = Student.query.filter(Student.subjects.ilike(f'%{query}%'))
-        else:
+        elif not filter_type:
             students_query = Student.query.filter(
                 (Student.name.ilike(f'%{query}%')) |
                 (Student.adm.ilike(f'%{query}%')) |
@@ -176,7 +178,7 @@ def search():
                 'per_page': per_page
             })
         else:
-            return render_template('search_results.html', form=form, students=students, total_count=total_count)
+            return render_template('search_results.html', form=form, students=students, total_count=total_count, query=query)
 
     if is_ajax:
         return jsonify({
@@ -230,7 +232,8 @@ def default():
 @login_required
 def dashboard():
     student = Student.query.get(session.get('student_id'))
-    return render_template("dashboard.html", student=student)
+    teacher = Teacher.query.filter_by(grade=student.grade).first()
+    return render_template("dashboard.html", student=student, teacher=teacher)
 
 @app.route('/staff_dashboard')
 @login_required
@@ -334,8 +337,8 @@ def staff_portal():
             session["staff_id"] = staff.id
             return redirect(url_for('staff_dashboard'))
         flash("Invalid ID or password!", "error")
-    student = Student.query.get(session.get('staff_id'))
-    if student:
+    staff = Teacher.query.get(session.get('staff_id'))
+    if staff:
         flash("Auto Recovered Session!", "success")
         return redirect(url_for('staff_dashboard'))
     return render_template("staff_login.html")
@@ -369,6 +372,63 @@ def finances():
     student = Student.query.get(session.get('student_id'))
     dest = request.args.get('dest')
     return render_template('finance.html', dest=dest, student=student)
+
+@app.route("/subjects")
+def subjects():
+    id = session.get('staff_id')
+    id2 = session.get('student_id')
+    if id and request.method == 'GET':
+        teacher = Teacher.query.get(session.get('staff_id'))
+        students = Student.query.filter_by(grade=teacher.grade).all()  
+        subjects = Subject.query.filter_by(teacher_id=id).all()
+        subject_list = [{"id": subject.id, "name": subject.name, 'grade' : subject.grade} for subject in subjects]
+
+        return render_template(
+            "subjects.html",
+            teacher=teacher,
+            students=students,
+            subjects=subject_list
+        )
+    if id2:
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        postMethod = request.headers.get('method') == 'POST'
+        student = Student.query.get(session.get('student_id'))
+        subjects = Subject.query.filter_by(grade=student.grade).all()
+        if is_ajax and postMethod:
+            subjects_list = []
+            for subject in subjects:
+                teacher = Teacher.query.filter_by(id=subject.teacher_id).first()
+                subjects_list.append({
+                    'id': subject.id,
+                    'name': subject.name,
+                    'grade': subject.grade,
+                    'teacher': teacher.name,
+                    'teacher_phone': teacher.phone1
+                })
+            return jsonify({
+                'subjects': subjects_list
+            })
+        flash('success', 'success')
+        return redirect(url_for('dashboard'))
+
+@app.route('/add_subject', methods=['POST'])
+def add_subject():
+    name = request.form.get('name')
+    abr = request.form.get('abr')
+    grade = request.form.get('grade')
+    teacher = Teacher.query.get(session.get('staff_id'))
+    new_subject = Subject(name=name, abr=abr, teacher_id=teacher.id, grade=grade if grade else teacher.id)
+    try:
+        db.session.add(new_subject)
+        db.session.commit()
+        flash(f'{name} subject added','success' )
+        return redirect(url_for('subjects'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'{name} subject add failed. Error `{str(e)}`','error' )
+        return redirect(url_for('subjects'))
+
+
 
 @app.route('/add_teacher', methods=['GET', 'POST'])
 @login_required
