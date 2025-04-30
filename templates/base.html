@@ -59,13 +59,17 @@
     {% endwith %}
 </div>
 <div class="content flex row wrap">
+    {% if student %}
     <div class="dash-header w-100 flex aln-cn" style="justify-content: space-between;">
-        <div class="student_name" style="margin-left: 50px;">{{student.name}} | Dashboard</div>
+        <div class="student_name" style="margin-left: 50px;">
+            {{student.name }} | Dashboard
+        </div>
         <div class="notifications" title="notifications" onclick="notifAction()">
             <i class="fas fa-bell c-p us-none"></i>
         </div>
         <img class="profile-pic" src="{{student.pic}}" alt="" srcset="">
     </div>
+    {% endif %}
 {% block content %}
 {% endblock %}
 

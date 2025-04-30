@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Profile {% endblock %}
+
+{% block content %}
+<form id="change-class-form">
+    <input type="text" name="new_grade" placeholder="Enter new grade" required>
+    <button type="submit">Change Class</button>
+  </form>
+  
+  <script>
+  document.getElementById("change-class-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+  
+    fetch("/change_class/{{ teacher.id }}", {
+      method: "POST",
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        new swal("Success!", data.message, "success");
+      } else {
+        swal("Oops!", data.message, "error");
+      }
+    })
+    .catch(err => {
+      new swal("Error!", "Something went wrong.", "error");
+    });
+  });
+  </script>
+  {% endblock %}

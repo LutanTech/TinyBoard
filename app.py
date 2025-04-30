@@ -197,7 +197,13 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
-    return redirect(url_for('portal'))
+    return render_template('index.html')
+
+
+@app.route('/profile')
+def profile():
+    teacher = Teacher.query.get(session.get('staff_id'))
+    return render_template('profile.html', teacher=teacher)
 
 
 def calculate(id):
@@ -405,6 +411,8 @@ def subjects():
                     'teacher': teacher.name,
                     'teacher_phone': teacher.phone1
                 })
+
+            flash('Updated subjects','success')
             return jsonify({
                 'subjects': subjects_list
             })
@@ -417,7 +425,7 @@ def add_subject():
     abr = request.form.get('abr')
     grade = request.form.get('grade')
     teacher = Teacher.query.get(session.get('staff_id'))
-    new_subject = Subject(name=name, abr=abr, teacher_id=teacher.id, grade=grade if grade else teacher.id)
+    new_subject = Subject(name=name, abr=abr, teacher_id=teacher.id, grade=grade if grade else teacher.grade)
     try:
         db.session.add(new_subject)
         db.session.commit()
@@ -426,6 +434,60 @@ def add_subject():
     except Exception as e:
         db.session.rollback()
         flash(f'{name} subject add failed. Error `{str(e)}`','error' )
+        return redirect(url_for('subjects'))
+    
+
+@app.route('/change_class/<teacher_id>', methods=['POST'])
+def change_teacher_class(teacher_id):
+    new_grade = request.form.get('new_grade')
+
+    if not new_grade:
+        return jsonify({'status': 'error', 'message': 'New grade is required'}), 400
+
+    teacher = Teacher.query.get(teacher_id)
+    if not teacher:
+        return jsonify({'status': 'error', 'message': 'Teacher not found'}), 404
+
+    old_grade = teacher.grade
+    if old_grade == new_grade:
+        return jsonify({'status': 'error', 'message': 'Teacher is already assigned to this grade'}), 400
+
+    teacher.grade = new_grade
+
+
+    students_to_update = Student.query.filter_by(grade=old_grade).all()
+    for student in students_to_update:
+        student.grade = new_grade
+
+    subjects_to_delete = Subject.query.filter_by(teacher_id=teacher.id, grade=old_grade).all()
+    for subject in subjects_to_delete:
+        db.session.delete(subject)
+
+    try:
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f"Grade changed to '{new_grade}'. {len(students_to_update)} students moved 🚀 and previous class' {len(subjects_to_delete)} subjects deleted ."
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': f'Commit failed: {str(e)}'}), 500
+
+@app.route('/drop_subject/<int:subject_id>/<int:teacher_id>', methods=['POST'])
+def drop_subject(subject_id, teacher_id):
+    subject = Subject.query.filter_by(id=subject_id, teacher_id=teacher_id).first()
+
+    if not subject:
+        return jsonify({'status': 'error', 'message': 'Subject not found or not owned by this teacher'}), 404
+
+    try:
+        db.session.delete(subject)
+        db.session.commit()
+        flash('subject dropped succesfully', 'success')
+        return redirect(url_for('subjects'))
+    except Exception as e:
+        db.session.rollback()
+        flash('subject drop failed', 'error')
         return redirect(url_for('subjects'))
 
 
@@ -457,6 +519,13 @@ def logout():
     session.clear()
     flash('Logged out successfully', 'success')
     return redirect(url_for('portal'))
+
+@app.route('/staff_logout')
+def staff_logout():
+    logout_user()
+    session.clear()
+    flash('Logged out successfully', 'success')
+    return redirect(url_for('staff_portal'))
 
 if __name__ == '__main__':
     with app.app_context():

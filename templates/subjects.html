@@ -33,6 +33,27 @@
             <h2> Subject ID: {{ subject.id }}</h2>
             <p> Subject Name: {{ subject.name }}</p>
             <h2>Grade: {{ subject.grade }}</h2>
+            <form id="drop-form-{{subject.id}}" action="/drop_subject/{{subject.id}}/{{teacher.id}}" method="post">
+                <button type="button" style="width: 130px !important;" class="btn-s-pri bdr-40 bg-bl-0" onclick="confirmDrop('{{subject.id}}')">Drop Subject</button>
+            </form>
+            
+            <script>
+            function confirmDrop(subjectId) {
+                new swal({
+                    title: "Are you sure?",
+                    text: "This will permanently delete the subject!",
+                    icon: "warning",
+                }).then((willDelete) => {
+                    if (willDelete) {
+                        document.getElementById('drop-form-' + subjectId).submit();
+                    }
+                    else{
+                        return;
+                    }
+                });
+            }
+            </script>
+            
         </div>
         {% endfor %}
 
@@ -72,6 +93,10 @@
         {% endfor %}
     {% endif %}
     {% endwith %}
+    
+
+
+
 </div>
 {% endblock %}
 

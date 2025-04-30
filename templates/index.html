@@ -1,8 +1,163 @@
-{% extends 'layout.html' %}
-<title>{% block title %} Home {% endblock %}</title>
-{% block content %}
-<div class="top-div details">
-    <p class="sch-name"> KIBZ SEC SCHOOL </p>
-    <hr class="pd-1 w-100 bg-bl">
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="learning">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home </title>
+    <link rel="stylesheet" href="../static/css/imports/main.css">  
+      <link rel="stylesheets" href="../static/css/main/index.css">
+      <script src="../static/js/main/main.js"></script>
+      <script src="../static/js/imports/SweetAlert2.js" defer></script>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+       <style>
+        html, body{
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .header{
+            justify-content: right;
+            align-items: flex-end;
+        }
+        .pc-ul{
+            list-style: none;
+            justify-content: center;
+            align-items: center;
+            text-align: right;
+            margin-right: 20px !important;
+            transition: all 1s ease;
+        }
+        .pc-ul li{
+            cursor: pointer;
+            margin: 5px;
+            font-size: small;
+            font-weight: bold;
+            padding: 2px 5px;
+            text-transform: uppercase;
+            user-select: none;
+            &:hover{
+            transform: translateY(-2px);
+            border-bottom: 2px solid white;
+            color: rgb(20, 150, 0);
+            }
+            &:active{
+                scale: 0.98;
+            }
+}
+       </style>
+</head>
+<body class="ovf-y-h h-100 pd-0" style="background-image: url(../static/images/login-backg.webp); background-blend-mode: multiply; background-color: rgb(150, 249, 247); margin: 2px;">
+    <div class="container w-100 h-v100 flex col jst-cn aln-cn pd-0 mg-0">
+    <div class="header flex row n-wrap w-100 pd-10 ps-fx t-0 r-0 l-0">
+        <ul class="pc-ul flex row n-wrap gap-5" >
+            <li data-href="#About"> About</li>
+            <li data-href="portal">Student Portal</li>
+            <li data-href="staff_portal">Staff Portal</li>
+            <li data-href="#support"> Support</li>
+            <li data-href="#contact">Contact Info</li>
+        </ul>
+        </div>
+        </div>
+        </body>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('hero-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas dimensions
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // Particle class
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.size = Math.random() * 5 + 1;
+                    this.speedX = Math.random() * 3 - 1.5;
+                    this.speedY = Math.random() * 3 - 1.5;
+                    this.color = this.getRandomColor();
+                }
+                
+                getRandomColor() {
+                    const colors = [
+                        'rgba(76, 175, 80, 0.7)',  // green
+                        'rgba(156, 39, 176, 0.7)', // purple
+                        'rgba(33, 150, 243, 0.7)', // blue
+                        'rgba(255, 87, 34, 0.7)'   // orange
+                    ];
+                    return colors[Math.floor(Math.random() * colors.length)];
+                }
+                
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    
+                    if (this.x < 0 || this.x > canvas.width) {
+                        this.speedX = -this.speedX;
+                    }
+                    
+                    if (this.y < 0 || this.y > canvas.height) {
+                        this.speedY = -this.speedY;
+                    }
+                }
+                
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Create particles
+            const particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle());
+            }
+            
+            // Connect particles with lines
+            function connectParticles() {
+                const maxDistance = 200;
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < maxDistance) {
+                            const opacity = 1 - (distance / maxDistance);
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.3})`;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+            
+            // Animation loop
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw and update particles
+                particles.forEach(particle => {
+                    particle.update();
+                    particle.draw();
+                });
+                
+                connectParticles();
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        });
+        </script>
+    </html>

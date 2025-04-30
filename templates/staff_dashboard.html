@@ -25,7 +25,7 @@
             <tbody>
                 {% for t in teachers %}
                     <tr>
-                        <td>{{ t.name }}</td>
+                        <td>{{ t.name }}{% if t.is_admin %} <i class="f-s-s cl-r">(Admin)</i>{% endif %}</td>
                         <td>{{ t.id }}</td>
                         <td>{{ t.phone1 }}</td>
                         <td>{{ t.grade }}</td>
@@ -46,4 +46,7 @@
         </table>
     </div>
 </div>
+
+
 {% endblock %}
+ 

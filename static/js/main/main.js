@@ -7,7 +7,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   links.forEach(link =>{
     var dest = link.getAttribute('data-href')
     const tc = link.querySelector('.tc')
+    if(tc){
     link.title = tc.innerText
+    }
     link.addEventListener('click', ()=>{
       if(dest){
         window.location.href = dest
