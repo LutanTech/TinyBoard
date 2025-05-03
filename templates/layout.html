@@ -4,21 +4,20 @@
     <meta charset="UTF-8">
     <meta name="description" content="learning">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %} {% endblock %} | eZone</title>
+    <title>{% block title %}{% endblock %} | eZone</title>
     <link rel="stylesheet" href="../static/css/imports/main.css">  
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" preload>
     <link rel="stylesheet" href="../static/css/main/styles.css">
     <script src="../static/js/main/main.js"></script>
     <script src="../static/js/imports/SweetAlert2.js"></script>
     <link href="../static/css/imports/tailwind.css" rel="stylesheet">   
-
-
 </head>
 <body class="pd-0 mg-0 w-100 ovf-x-h ovf-y-a">
-    <div class="sidebar col  ps-fx wrap aln-cn h-100">
+
+    <div class="sidebar col ps-fx wrap aln-cn h-100">
         <div class="menu-toggle ps-abs c-p bdr-10 us-none flex col jst-cn gap-5">
             <span></span><span></span><span></span>
-    </div>
+        </div>
         <div class="div flex col jst-cn aln-cn gap-10">
             <div class="logo pd-10 bdr-50"></div>
             <div class="name">eZone</div>
@@ -26,17 +25,17 @@
         <ul class="pc-ul flex col jst-cn grow gap-5">
             <li data-href="/staff_dashboard">
                 <i class="fas fa-home"></i>
-                 <span class="tc none">Home</span>
-                </li>
+                <span class="tc none">Home</span>
+            </li>
             <li data-href="/add_student">
                 <i class="fas fa-user-plus"></i>
-                 <span class="tc none">Add Student</span>
-                </li>
+                <span class="tc none">Add Student</span>
+            </li>
             {% if teacher and teacher.is_admin %}
             <li data-href="/add_teacher">
                 <i class="fas fa-user-plus"></i>
-                 <span class="tc none">Add Teacher</span>
-                </li>
+                <span class="tc none">Add Teacher</span>
+            </li>
             {% endif %}
             <li data-href="/students">
                 <i class="fas fa-user-graduate"></i> 
@@ -44,28 +43,28 @@
             </li>
             <li data-href="/subjects">
                 <i class="fas fa-clipboard"></i>
-                 <span class="tc none">Your Subjects</span>
-                </li>
+                <span class="tc none">Your Subjects</span>
+            </li>
             <li data-href="/exams">
                 <i class="fas fa-pen"></i>
-                 <span class="tc none">Exams</span>
-                </li>
+                <span class="tc none">Exams</span>
+            </li>
             <li data-href="/attendance">
                 <i class="fas fa-clipboard-list"></i>
-                 <span class="tc none">Attendance</span>
-                </li>
+                <span class="tc none">Attendance</span>
+            </li>
             <li data-href="/profile?dest=notifications">
                 <i class="fas fa-bell"></i> 
                 <span class="tc none">Announcements</span>
             </li>
             <li data-href="/profile?dest=all">
                 <i class="fas fa-user-cog"></i>
-                 <span class="tc none">Profile Settings</span>
-                </li>
+                <span class="tc none">Profile Settings</span>
+            </li>
             <li data-href="/staff_logout">
                 <i class="fas fa-sign-out-alt"></i>
-                 <span class="tc none">Logout</span>
-                </li>
+                <span class="tc none">Logout</span>
+            </li>
         </ul>
         
         <div class="dev">
@@ -95,57 +94,66 @@
 
     <div class="content flex row wrap" style="margin-left: 55px !important;">
         <form id="search-form" onsubmit="return false;">
-            <input type="text" id="search-query" placeholder="Search students..." />
-            <select id="filter-type">
-              <option value="">All</option>
-              <option value="grade">Grade</option>
-              <option value="st_gender">Gender</option>
-              <option value="subjects">Subjects</option>
+            <input type="text" id="query" placeholder="Search students..." oninput="debouncedSearch()" />
+            <select id="filter_type">
+                <option value="">All</option>
+                <option value="grade">Grade</option>
+                <option value="adm">ADM No.</option>
+                <option value="st_gender">Gender</option>
+                <option value="subjects">Subjects</option>
             </select>
             <button onclick="searchStudents()">Search</button>
-          </form>
-          
-          <div id="search-results">
-            <!-- Students will magically appear here 🪄 -->
-          </div>
-          
+        </form>
+
+        <!-- Results container -->
+        <div id="resultsDiv" class="w-100 pd-10"></div>
+
         {% block content %}
         {% endblock %}
     </div>
+
+    <script>
+        function searchStudents() {
+            const query = document.getElementById('query').value;
+            const filterType = document.getElementById('filter_type').value;
+
+            fetch(`/search?query=${encodeURIComponent(query)}&filter_type=${encodeURIComponent(filterType)}`, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('resultsDiv');
+                resultsDiv.innerHTML = '';
+
+                if (!data.students || data.students.length === 0) {
+                    resultsDiv.innerHTML = '<p class="tc">No students found.</p>';
+                    return;
+                }
+
+                const ul = document.createElement('ul');
+                ul.classList.add('resultsLi');
+                data.students.forEach(student => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${student.name}</strong> (${student.grade}) - <a href="mailto:${student.email}">${student.email}</a>`;
+                    li.onclick = () => {
+                        window.location.href = `/student?id=${student.id}`;
+                    };
+                    ul.appendChild(li);
+                });
+                resultsDiv.appendChild(ul);
+            })
+            .catch(error => {
+                console.error('Oops, something went wrong! ', error);
+                Swal.fire('Error', 'Failed to load results. Try again later.', 'error');
+            });
+        }
+
+        let debounceTimer;
+        function debouncedSearch() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(searchStudents, 300);
+        }
+    </script>
 </body>
-<script>
-    function searchStudents() {
-  const query = document.getElementById('search-query').value;
-  const filterType = document.getElementById('filter-type').value;
-
-  fetch(`/search?query=${encodeURIComponent(query)}&filter_type=${encodeURIComponent(filterType)}`, {
-    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-  })
-    .then(response => response.json())
-    .then(data => {
-      const resultsDiv = document.getElementById('search-results');
-      resultsDiv.innerHTML = '';
-
-      if (data.students.length === 0) {
-        resultsDiv.innerHTML = '<p>No students found. 🕵️‍♂️</p>';
-        return;
-      }
-      document.getElementById('search-query').addEventListener('input', () => {
-  searchStudents();
-});
-
-      const ul = document.createElement('ul');
-      data.students.forEach(student => {
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>${student.name}</strong> (${student.grade}) - ${student.email}`;
-        ul.appendChild(li);
-      });
-      resultsDiv.appendChild(ul);
-    })
-    .catch(error => {
-      console.error('Oops, something went wrong! 🧯', error);
-    });
-}
-
-</script>
 </html>

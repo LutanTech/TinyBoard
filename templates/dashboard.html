@@ -42,18 +42,19 @@
     <div class="notifDiv ps-fx bg-b-0 t-0 b-0 r-0 l-0 none jst-cn aln-cn">
         <div class="closeBtn ps-fx pd-5 bg-w bdr-5 c-p us-none" onclick="notifAction()">&times;</div>
         <div class="notifDiv-inner flex col mg-au bg-w bdr-10 cl-b jst-cn pd-10 aln-cn">
-            <div class="notification _high">
-                <p class="notif-title">Areas Settling</p>
-                <p class="notif-content">You are supposed to pay your fees before 5th September 2025. Failure to which, youll be send home</p>
-                <p class="notif-date">12th Aug 2025</p>
-                <p class="notif-regards">Finance Dept</p>
-            </div>
-            <div class="notification _high">
-                <p class="notif-title">Areas Settling 2</p>
-                <p class="notif-content">You are supposed to pay your fees before 5th September 2025. Failure to which, youll be send home</p>
-                <span class="notif-date ">12th Aug 2025</span><br>
-                <span class="notif-regards ">Finance Dept</span>
-            </div>
+          {% if notifs %}
+          {% for notif in notifs %}
+          <div class="notification _{{notif.priority}}">
+            <p class="notif-title">{{notif.name}}</p>
+            <p class="notif-content">{{notif.content}}</p>
+            <p class="notif-date">{{notif.date if date else None}}</p>
+            <p class="notif-regards">{{ notif.sender }}</p>
+        </div>
+        {% endfor %}
+        {% else %}
+        <h3>No notifications Available</h3>
+        {% endif %} 
+
         </div>
     </div>
 <div class="card" id="subjectsDiv">

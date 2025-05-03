@@ -14,6 +14,8 @@ import uuid
 import shortuuid
 import string
 import secrets
+import base64
+import requests
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///main.db'
@@ -47,7 +49,7 @@ class Teacher(UserMixin, db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
-    pic = db.Column(db.String(10000000), nullable=True, default="https://i.ibb.co/wNQGbTGf/default.jpg")
+    pic = db.Column(db.Text, nullable=True, default="https://i.ibb.co/wNQGbTGf/default.jpg")
     grade = db.Column(db.String(100), nullable=False)
     phone1 = db.Column(db.String(500), nullable=False)
     phone2 = db.Column(db.String(500), nullable=True)
@@ -60,13 +62,15 @@ class Teacher(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+from sqlalchemy.ext.hybrid import hybrid_property
+
 class Student(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     adm = db.Column(db.String, unique=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
-    pic = db.Column(db.String(10000000), nullable=True, default="https://i.ibb.co/wNQGbTGf/default.jpg")
+    pic = db.Column(db.Text, nullable=True, default="https://i.ibb.co/wNQGbTGf/default.jpg")
     st_gender = db.Column(db.String(50), nullable=False)
     grade = db.Column(db.String(100), nullable=False)
     g_name = db.Column(db.String(500), nullable=True)
@@ -77,9 +81,12 @@ class Student(UserMixin, db.Model):
     g_gender = db.Column(db.String(50), nullable=False)
     billed = db.Column(db.Integer, nullable=False, default=5000)
     paid = db.Column(db.Integer, nullable=False, default=0)
-    balance = db.Column(db.Integer, nullable=True, default=0)
-    subjects = db.Column(JSON, nullable=True) 
-    
+    subjects = db.Column(JSON, nullable=True)
+
+    @hybrid_property
+    def balance(self):
+        return self.billed - self.paid
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -94,8 +101,8 @@ class Notification(db.Model):
     priority = db.Column(db.String(50), nullable=True)
     content = db.Column(db.Text, nullable=True)
     read_by = db.Column(JSON, nullable=True)
-    sender = db.Column(db.String(500), db.ForeignKey('teacher.grade'), nullable=False)
-    class_id = db.Column(db.Integer, db.ForeignKey('grade.id'), nullable=False)
+    sender = db.Column(db.String(500), nullable=False)
+    grade = db.Column(db.String(100), nullable=False)
 
 class Grade(db.Model):
     __tablename__ = 'grade'
@@ -113,7 +120,6 @@ class Subject(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
     grade = db.Column(db.String, db.ForeignKey('teacher.grade'))
 
-
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField
 from wtforms.validators import DataRequired
@@ -125,7 +131,7 @@ class SearchForm(FlaskForm):
         ('adm', 'ADM No.'),  
         ('grade', 'Grade'),
         ('st_gender', 'Gender'),
-        ('subjects', 'Subjects'),
+        ('name', 'Name'),
     ])
 
 @app.route('/search', methods=['GET', 'POST'])
@@ -137,63 +143,59 @@ def search():
     total_count = 0
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    query = value = form.query.data.strip() if form.validate_on_submit() else request.args.get('query', '').strip()
+    filter_type = form.filter_type.data if form.validate_on_submit() else request.args.get('filter_type', '')
 
-    if form.validate_on_submit() or request.method == 'GET':
-        query = form.query.data if form.validate_on_submit() and form.query.data != '' or ' ' else request.args.get('query', '')
-        filter_type = form.filter_type.data if form.validate_on_submit() else request.args.get('filter_type', '')
-        value = form.query.data
-        if value and  filter_type == 'grade':
-            students_query = Student.query.filter(Student.grade.ilike(f'%{query}%'))
-        elif value and  filter_type == 'st_gender':
-            students_query = Student.query.filter(Student.st_gender.ilike(f'%{query}%'))
-        elif value and filter_type == 'subjects':
-            students_query = Student.query.filter(Student.subjects.ilike(f'%{query}%'))
-        elif not filter_type:
-            students_query = Student.query.filter(
+    if value != '':
+        if filter_type == 'grade':
+            students_query = students_query.filter(Student.grade.ilike(f'%{query}%'))
+        elif filter_type == 'adm':
+            students_query = students_query.filter(Student.adm.ilike(f'%{query}%'))
+        elif filter_type == 'st_gender':
+            students_query = students_query.filter(Student.st_gender.ilike(f'%{query}%'))
+        elif filter_type == 'name':
+            students_query = students_query.filter(Student.name.ilike(f'%{query}%'))
+        else:
+            students_query = students_query.filter(
                 (Student.name.ilike(f'%{query}%')) |
                 (Student.adm.ilike(f'%{query}%')) |
                 (Student.email.ilike(f'%{query}%')) |
                 (Student.grade.ilike(f'%{query}%'))
             )
 
-        total_count = students_query.count()
-        students = students_query.paginate(page=page, per_page=per_page, error_out=False)
+    total_count = students_query.count()
+    students = students_query.paginate(page=page, per_page=per_page, error_out=False)
 
-        if is_ajax:
-            student_list = []
-            for student in students.items:
-                student_list.append({
-                    'id': student.id,
-                    'name': student.name,
-                    'adm': student.adm,
-                    'email': student.email,
-                    'grade': student.grade,
-                    'st_gender': student.st_gender,
-                    'subjects': student.subjects
-                })
-            return jsonify({
-                'students': student_list,
-                'total_count': total_count,
-                'page': page,
-                'per_page': per_page
-            })
-        else:
-            return render_template('search_results.html', form=form, students=students, total_count=total_count, query=query)
+    if is_ajax and request.method == 'GET':
+        student_list = [{
+            'id': s.id,
+            'name': s.name,
+            'adm': s.adm,
+            'email': s.email,
+            'grade': s.grade,
+            'st_gender': s.st_gender,
+            'subjects': s.subjects
+        } for s in students.items]
 
-    if is_ajax:
         return jsonify({
-            'students': [],
-            'total_count': 0,
+            'students': student_list,
+            'total_count': total_count,
             'page': page,
-            'per_page': per_page
+            'per_page': per_page,
+            'ft': filter_type,
+            'value': value
         })
 
-    return render_template('search_results.html', form=form, students=[], total_count=0)
+    return render_template('search.html', form=form, students=students.items, total_count=total_count, query=query)
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Student.query.get(user_id) or Teacher.query.get(user_id)
+    student = Student.query.get(user_id)
+    if student:
+        return student
+    teacher = Teacher.query.get(user_id)
+    return teacher
 
 @app.route('/')
 def index():
@@ -202,28 +204,15 @@ def index():
 
 @app.route('/profile')
 def profile():
+    dest = request.args.get('dest')
     teacher = Teacher.query.get(session.get('staff_id'))
-    return render_template('profile.html', teacher=teacher)
+    return render_template('profile.html', teacher=teacher, dest=dest if dest else None )
 
-
-def calculate(id):
-    student = Student.query.filter_by(id=id).first()
-    
-    if not student:
-        flash(f"something went wrong calculating balance", "error")
-        return
-
-    try:
-        student.balance = int(student.billed) - int(student.paid)
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        flash(f" Something went wrong: {e}", "error")
 
 
 @app.route('/default_teacher')
 def default():
-    def_teacher = Teacher(name='Default',id=1000, email='default@mail.com', password_hash=generate_password_hash('default'), grade='1', phone1='0712345678', is_admin=True)
+    def_teacher = Teacher(name='Default', id=1000, email='default@mail.com', password_hash=generate_password_hash('default'), grade='1', phone1='0712345678', is_admin=True)
     try:
         db.session.add(def_teacher)
         db.session.commit()
@@ -239,7 +228,8 @@ def default():
 def dashboard():
     student = Student.query.get(session.get('student_id'))
     teacher = Teacher.query.filter_by(grade=student.grade).first()
-    return render_template("dashboard.html", student=student, teacher=teacher)
+    notifs = Notification.query.filter_by(grade=student.grade).all()
+    return render_template("dashboard.html", student=student, teacher=teacher, notifs=notifs)
 
 @app.route('/staff_dashboard')
 @login_required
@@ -253,6 +243,7 @@ def staff_dashboard():
         students=students,
         teachers=teachers
     )
+
 
 
 @app.route('/students')
@@ -278,7 +269,6 @@ def student():
         return redirect(url_for('staff_dashboard'))
 
     if student.grade == teacher.grade:
-        calculate(student.id)
         return render_template('student.html', student=student)
     else:
         flash(f'You do not have permission to view this student\'s info. Please contact the class teacher for {student.grade}.', 'info')
@@ -309,7 +299,7 @@ def update_student():
     student.balance = int(student.billed) - int(student.paid)
     db.session.commit()
     
-    flash('Student information updated successfully! 🎉', 'success')
+    flash('Student information updated successfully! ', 'success')
     return redirect(url_for('students'))
 
 
@@ -323,7 +313,6 @@ def portal():
         if student and student.check_password(password):
             login_user(student)
             session["student_id"] = student.id
-            calculate(student.id)
             return redirect(url_for('dashboard'))
         flash("Invalid Reg No. or password!", "error")
     student = Student.query.get(session.get('student_id'))
@@ -353,6 +342,7 @@ def staff_portal():
 
 @app.route('/add_student', methods=['GET', 'POST'])
 def add_student():
+    teacher = Teacher.query.get(session.get('staff_id'))
     if request.method == 'POST':
         data = request.form
         if Student.query.filter_by(adm=data['adm']).first():
@@ -360,7 +350,7 @@ def add_student():
             return redirect(url_for('add_student'))
         student = Student(
             name=data['name'], adm=data['adm'], email=data['email'],
-            st_gender=data['st_gender'], grade=data['grade'],
+            st_gender=data['st_gender'], grade=data['grade'] or teacher.grade,
             g_name=data['g_name'], g_type=data['g_type'], g_gender=data['g_gender'],
             phone1=data['phone1'], phone2=data.get('phone2'), phone3=data.get('phone3'),
             pic=data.get('pic', 'default.png')
@@ -491,6 +481,53 @@ def drop_subject(subject_id, teacher_id):
         return redirect(url_for('subjects'))
 
 
+@app.route("/update_teacher", methods=["POST"])
+@login_required
+def update_teacher():
+    teacher = Teacher.query.get(current_user.id)
+    teacher.phone1 = request.form.get("phone", teacher.phone1)
+    teacher.email = request.form.get("email", teacher.email)
+    try:
+        db.session.commit()
+        flash("Profile updated successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash("Error updating profile. Try again.", "danger")
+        print(e)
+
+    return redirect(url_for("profile"))
+
+@app.route('/send-bulk-whatsapp')
+def send_bulk_whatsapp():
+    students = Student.query.filter(Student.balance > 0).all()
+    token = "WA3KnRnybEhsZ1x6NVgv"
+    failed = []
+
+    for student in students:
+        if not student.phone1:
+            continue  
+
+        message = f"Hi {student.name}, your balance is Ksh {student.balance:,}. Please clear it at your earliest convenience. - Lutan Tech 💼"
+
+        response = requests.post(
+            'https://api.fonnte.com/send',
+            headers={"Authorization": token},
+            data={
+                'target': student.phone1,
+                'message': message,
+                'countryCode': '254',
+            }
+        )
+
+        result = response.json()
+        if not result.get('status'):
+            failed.append(student.name)
+    if failed:
+        flash(f"Some messages failed to send: {', '.join(failed)}", "danger")
+    else:
+        flash(f"Successfully sent WhatsApp messages to {len(students)} students!", "success")
+
+    return redirect(url_for('students')) 
 
 @app.route('/add_teacher', methods=['GET', 'POST'])
 @login_required
@@ -511,6 +548,46 @@ def add_teacher():
         flash("Teacher added successfully!", "success")
         return redirect(url_for('add_teacher'))
     return render_template('add_teacher.html')
+
+
+
+@app.route('/add_notification', methods=['POST'])
+def add_notification():
+    teacher = Teacher.query.get(session.get('staff_id'))
+    title = request.form.get('title')
+    priority = request.form.get('priority')
+    content= request.form.get('content')
+    if request.method == 'POST':
+        new_notif = Notification(name=title, priority=priority, content=content, sender=teacher.name, grade=teacher.grade)
+        try:
+            db.session.add(new_notif)
+            db.session.commit()
+            flash('Notification Posted Succesfully!', 'success')
+            return redirect(url_for('profile'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occured. Try again!', 'error')
+            print(f'error occured adding notification. {str(e)}')
+        return redirect(url_for('profile'))
+    flash('Wrong input method. Try again!', 'error')
+    return redirect(url_for('profile'))
+
+def print_all_routes():
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append({
+            'Endpoint': rule.endpoint,
+            'URL': str(rule),
+            'Methods': ', '.join(rule.methods)
+        })
+    # Print or return the routes list
+    for route in routes:
+        print(f"Endpoint: {route['Endpoint']}, URL: {route['URL']}, Methods: {route['Methods']}")
+
+@app.route('/print_routes')
+def show_routes():
+    print_all_routes()  # Print all routes to the console
+    return "Check your console for the list of routes."
 
 
 @app.route('/logout')

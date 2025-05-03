@@ -1,0 +1,188 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+{% block title %} Search {% endblock %}
+
+<style>
+#searchForm {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 123, 255, 0.2);
+    max-width: 600px;
+    margin: 0 auto 30px;
+}
+
+#queryInput,
+#filterType {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    transition: border-color 0.3s;
+}
+
+#queryInput:focus,
+#filterType:focus {
+    border-color: #007BFF;
+    outline: none;
+}
+#filterType {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    transition: border-color 0.3s;
+    background-color: #ffffff;
+    appearance: none; /* Remove the default arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+#filterType:focus {
+    border-color: #007BFF;
+    outline: none;
+}
+
+/* Custom dropdown arrow */
+#filterType::-ms-expand {
+    display: none; /* Remove the default dropdown arrow in IE */
+}
+
+#filterType option {
+    background-color: #ffffff;
+    padding: 10px;
+    color: #333;
+    font-size: 14px;
+}
+
+#filterType option:hover {
+    background-color: #007BFF;
+    color: white;
+}
+
+#filterType option:checked {
+    background-color: #007BFF;
+    color: white;
+}
+
+
+#searchButton {
+    background-color: #007BFF;
+    border: none;
+    padding: 10px 20px;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#searchButton:hover {
+    background-color: #0056b3;
+}
+
+#resultsList {
+    list-style-type: none;
+    padding: 0;
+    max-width: 800px;
+    margin: auto;
+}
+
+.resultItem {
+    background-color: #f5faff;
+    border-left: 5px solid #007BFF;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.resultItem:hover {
+    background-color: #e6f0ff;
+}
+
+.emailLink,
+.phoneLink {
+    color: #007BFF;
+    text-decoration: none;
+}
+
+.emailLink:hover,
+.phoneLink:hover {
+    text-decoration: underline;
+}
+
+#noResults {
+    text-align: center;
+    font-weight: bold;
+    color: #555;
+}
+
+#pagination {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#pagination a {
+    margin: 0 10px;
+    color: #007BFF;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+#pagination span {
+    font-weight: bold;
+}
+</style>
+
+<form id="searchForm" method="POST">
+    {{ form.hidden_tag() }}
+    <div>
+        <label for="query">Search:</label>
+        {{ form.query(class="form-control", id="queryInput") }}
+    </div>
+    <div>
+        <label for="filter_type">Filter By:</label>
+        {{ form.filter_type(class="form-control", id="filterType") }}
+    </div>
+    <button type="submit" id="searchButton">Search</button>
+</form>
+
+<div id="resultsDiv">
+    {% if students %}
+        <h2 id="resultTitle">Search Results for "{{ query }}" ({{ total_count }} found):</h2>
+        <ul id="resultsList">
+            {% for student in students %}
+                <li class="resultItem" onclick="window.location.href='/student?id={{ student.id }}'">
+                    <strong>{{ student.name }}</strong> ({{ student.grade }}) -
+                    <a class="emailLink" href="mailto:{{ student.email }}">{{ student.email }}</a> -
+                    {{ student.adm }} -
+                    Phone: <a class="phoneLink" href="tel:{{ student.phone1 }}">{{ student.phone1 }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <div id="pagination">
+            {% if students.has_prev %}
+                <a href="{{ url_for('search', page=students.prev_num) }}">Previous</a>
+            {% endif %}
+            
+            <span>Page {{ students.page }} of {{ students.pages }}</span>
+            
+            {% if students.has_next %}
+                <a href="{{ url_for('search', page=students.next_num) }}">Next</a>
+            {% endif %}
+        </div>
+    {% else %}
+        <p id="noResults">No students found.</p>
+    {% endif %}
+</div>
+
+<!-- Optional SweetAlert2 for flair -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+
