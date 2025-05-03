@@ -500,7 +500,7 @@ def update_teacher():
 @app.route('/send-bulk-whatsapp')
 def send_bulk_whatsapp():
     students = Student.query.filter(Student.balance > 0).all()
-    token = "WA3KnRnybEhsZ1x6NVgv"
+    token = ""
     failed = []
 
     for student in students:
