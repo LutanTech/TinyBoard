@@ -28,7 +28,6 @@ body, html {
 }
 
 .sidebar {
-    width: 50px; /* not too wide */
     .logo{
         display: none !important;
     }
@@ -42,7 +41,12 @@ body, html {
 }
 
 .sidebar.appear {
-    width: 220px; /* not too wide */
+    width: 220px !important;
+    transform: translateX(0px);
+    .menu-toggle{
+        transform: translateX(-50px);
+
+    }
     .logo{
         display:flex !important;
     }
@@ -54,6 +58,31 @@ body, html {
     }
 }
 
+@media (max-width:600px) {
+    .sidebar{
+        width: 0px;
+        transform: translateX(-50px);
+
+    }
+    .content{
+        margin-left: 0 !important;
+        font-size:small !important;
+    }
+    .card{
+        transform: translateX(-10px);
+    }
+}
+@media (min-width:600px) {
+    .sidebar{
+        width: 50px !important;
+        transform: translateX(0px);
+        .menu-toggle{
+            transform: translateX(0px);
+    
+        }
+    }
+
+}
 /* Fix sidebar items */
 .pc-ul {
     list-style: none;
@@ -115,6 +144,7 @@ body, html {
     position: absolute;
     right: -35px;
     width: 40px;
+    transform: translateX(55px);
     height: 40px;
     z-index: 10;
     top: 10px;
@@ -293,4 +323,21 @@ body, html {
 
 #pagination span {
     font-weight: bold;
+}
+.closeBtnSpan{
+    color: red ;
+    background: #0000;
+    float: right;
+    font-size: xx-large;
+    cursor: pointer;
+    user-select: none;
+    &:active{
+        scale: 0.98;
+    }
+}
+#filterType{
+    width: 200px;
+    float: right;
+    position: sticky;
+    top: 0;
 }

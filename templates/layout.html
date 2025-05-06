@@ -14,7 +14,7 @@
 </head>
 <body class="pd-0 mg-0 w-100 ovf-x-h ovf-y-a">
 
-    <div class="sidebar col ps-fx wrap aln-cn h-100">
+    <div class="sidebar col ps-fx wrap aln-cn h-100" style="z-index: 2000;">
         <div class="menu-toggle ps-abs c-p bdr-10 us-none flex col jst-cn gap-5">
             <span></span><span></span><span></span>
         </div>
@@ -116,7 +116,7 @@
         function searchStudents() {
             const query = document.getElementById('query').value;
             const filterType = document.getElementById('filter_type').value;
-
+    
             fetch(`/search?query=${encodeURIComponent(query)}&filter_type=${encodeURIComponent(filterType)}`, {
                 method: 'GET',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -125,12 +125,12 @@
             .then(data => {
                 const resultsDiv = document.getElementById('resultsDiv');
                 resultsDiv.innerHTML = '';
-
+    
                 if (!data.students || data.students.length === 0) {
                     resultsDiv.innerHTML = '<p class="tc">No students found.</p>';
                     return;
                 }
-
+    
                 const ul = document.createElement('ul');
                 ul.classList.add('resultsLi');
                 data.students.forEach(student => {
@@ -148,7 +148,7 @@
                 Swal.fire('Error', 'Failed to load results. Try again later.', 'error');
             });
         }
-
+    
         let debounceTimer;
         function debouncedSearch() {
             clearTimeout(debounceTimer);

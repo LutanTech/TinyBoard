@@ -143,10 +143,15 @@ def search():
     total_count = 0
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    query = value = form.query.data.strip() if form.validate_on_submit() else request.args.get('query', '').strip()
-    filter_type = form.filter_type.data if form.validate_on_submit() else request.args.get('filter_type', '')
 
-    if value != '':
+    if form.validate_on_submit():
+        query = form.query.data.strip()
+        filter_type = form.filter_type.data
+    else:
+        query = (request.args.get('query') or '').strip()
+        filter_type = request.args.get('filter_type', '')
+
+    if query:
         if filter_type == 'grade':
             students_query = students_query.filter(Student.grade.ilike(f'%{query}%'))
         elif filter_type == 'adm':
@@ -183,11 +188,10 @@ def search():
             'page': page,
             'per_page': per_page,
             'ft': filter_type,
-            'value': value
+            'value': query
         })
 
     return render_template('search.html', form=form, students=students.items, total_count=total_count, query=query)
-
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -245,17 +249,51 @@ def staff_dashboard():
     )
 
 
-
-@app.route('/students')
+@app.route('/students', methods=['GET', 'POST'])
 @login_required
 def students():
-    teacher = Teacher.query.get(session.get('staff_id'))
-    students = Student.query.filter_by(grade=teacher.grade).all()  
+    staff_id = session.get('staff_id')
+    teacher = Teacher.query.get(staff_id)
+
+    if not teacher:
+        flash("Teacher not found. Are you logged in properly?", "error")
+        return redirect(url_for('staff_portal'))  
+
+    students = Student.query.filter_by(grade=teacher.grade).all()
+    if request.method == 'POST':
+        data = [{
+        "id" : s.id,
+        "name": s.name,
+        "phone": s.phone1,
+        "email": s.email,
+        "balance": s.balance,
+        "adm": s.adm, 
+        "gender" : s.st_gender
+
+        } for s in students]
+        return jsonify({'students' : data})
+    
     return render_template(
-        "students.html",
-        teacher=teacher,
-        students=students
-    )
+            "students.html",
+            teacher=teacher,
+            students=students
+        )
+
+@app.route('/areas', methods=['POST'])
+@login_required
+def areasi():
+    uncleared = Student.query.filter(
+        Student.grade == current_user.grade,
+        Student.billed - Student.paid > 0  
+    ).all()
+
+    data = [{
+        "name": s.name,
+        "phone": s.phone1,
+        "balance": s.balance
+    } for s in uncleared]
+
+    return jsonify({'students' : data})
 
 @app.route('/student')
 @login_required
@@ -273,6 +311,22 @@ def student():
     else:
         flash(f'You do not have permission to view this student\'s info. Please contact the class teacher for {student.grade}.', 'info')
         return redirect(url_for('staff_dashboard'))
+
+@app.route('/areas', methods=['POST'])
+@login_required
+def areas():
+    uncleared = Student.query.filter(
+        Student.grade == current_user.grade,
+        Student.billed - Student.paid > 0  
+    ).all()
+
+    data = [{
+        "name": s.name,
+        "phone": s.phone1,
+        "balance": s.balance
+    } for s in uncleared]
+
+    return jsonify({'students' : data})
 
 
 @app.route('/update_student', methods=['POST'])
@@ -296,13 +350,11 @@ def update_student():
     student.phone3 = request.form.get('phone3', None)
     student.billed = int(request.form['billed'])
     student.paid = int(request.form['paid'])
-    student.balance = int(student.billed) - int(student.paid)
+
     db.session.commit()
     
     flash('Student information updated successfully! ', 'success')
     return redirect(url_for('students'))
-
-
 
 @app.route('/portal', methods=['GET', 'POST'])
 def portal():
@@ -507,7 +559,7 @@ def send_bulk_whatsapp():
         if not student.phone1:
             continue  
 
-        message = f"Hi {student.name}, your balance is Ksh {student.balance:,}. Please clear it at your earliest convenience. - Lutan Tech 💼"
+        message = f"Hi {student.name}, your balance is Ksh {student.balance:,}. Please clear it at your earliest convenience. - Lutan Tech "
 
         response = requests.post(
             'https://api.fonnte.com/send',

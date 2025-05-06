@@ -9,10 +9,10 @@
 .card {
     background-color: #fff;
     border-radius: 15px;
-    padding: 1.5rem 2rem;
+    padding: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    flex: 1 1 270px;
-    min-width: 270px;
+    flex: 1 1 300px;
+    min-width: 250px;
 }
 
 .card h3 {

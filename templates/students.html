@@ -1,52 +1,186 @@
 {% extends "layout.html" %}
 {% block title %}Students{% endblock %}
-
 {% block content %}
 <link rel="stylesheet" href="../static/css/main/staff_dshb.css">
 
 <h2 class="f-s-m">Your Students</h2>
+<select id="filterType" class="input">
+  <option value="">Filter Students</option>
+  <option value="feeBalance">Fee Balance</option>
+  <option value="adm">Adm No</option>
+  <option value="male">Male</option>
+  <option value="female">Female</option>
+  <option value="name">Name</option>
+</select>
+
+<script>
+  const ft = document.getElementById('filterType');
+  ft.addEventListener('input', () => {
+    toggleUncleared();
+    filter(ft.value);
+  });
+</script>
 
 <div class="table-responsive w-100 mg-t-10 ovf-x-a">
-    <table class="table w-100">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Adm No.</th>
-                <th>Gender</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Balance</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for student in students %}
-            <tr style="border-bottom: 2px solid grey; cursor: pointer;" class="f-s-s hover-effect"
-                onclick="window.location.href='/student?id={{ student.id }}'">
-                <td>{{ student.name }}</td>
-                <td>{{ student.adm }}</td>
-                <td>{{ student.st_gender }}</td>
-                <td class="f-s-xs">{{ student.email }}</td>
-                <td class="f-s-s">{{ student.phone1 }}</td>
-                <td>
-                    {% if student.balance < 0 %}
-                        <span style="color: red;">Ksh {{ "{:,}".format(student.balance) }}</span>
-                    {% else %}
-                        Ksh {{ "{:,}".format(student.balance) }}
-                    {% endif %}
-                </td>
-            </tr>
+  <table class="table w-100">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Adm No.</th>
+        <th>Gender</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      <tr style="border-bottom: 2px solid grey; cursor: pointer;" class="f-s-s hover-effect"
+        onclick="window.location.href='/student?id={{ student.id }}'">
+        <td>{{ student.name }}</td>
+        <td>{{ student.adm }}</td>
+        <td>{{ student.gender }}</td>
+        <td class="f-s-xs">{{ student.email }}</td>
+        <td class="f-s-s">{{ student.phone1 }}</td>
+        <td>
+            {% if student.balance < 0 %}
+                <span style="color: red;">Ksh {{ "{:,}".format(student.balance) }}</span>
             {% else %}
-            <tr>
-                <td colspan="6" style="text-align: center;">No students found</td>
-            </tr>
-            {% endfor %}
-        </tbody>
+                Ksh {{ "{:,}".format(student.balance) }}
+            {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align: center;">No students found</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Filtered Students Modal -->
+<div class="uncleared none col jst-cn aln-cn w-100 h-100 bg-b-0 ps-abs t-0 r-0 l-0 b-0 mg-0" style="z-index: 1;">
+  <div class="uncleared_results bg-w w-90 bdr-5 pd-10" id="uncleared_results"
+    style="margin-left: 20px; max-width: 600px !important;">
+    <span class="closeBtnSpan" onclick="toggleUncleared()">&times;</span>
+    <div class="flex wrap" style="margin: 40px auto; justify-content: space-between;">
+      <div class="mgt-10">
+        <a href="" class="btn-s-pri bdr-40 bg-gr-0"><i class="fas fa-paper-plane"></i> Send Message</a>
+      </div>
+      <div class="mgt-10">
+        <a href="javascript:void(0);" onclick="fillIn()" class="btn-s-pri bdr-40 bg-gr-0"><i
+            class="fas fa-refresh"></i> Refresh</a>
+      </div>
+    </div>
+    <p> Filtering Using '<span id="ftype" class="bld cl-bl f-s-l"></span>' filter</p>
+    <span class="closeBtnSpan cl-bk" id="order" style="cursor:pointer;"><i class="fas fa-filter"></i></span>
+    <table class="table" id="studentTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>ADM</th>
+          <th>Phone</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody id="table"></tbody>
     </table>
+  </div>
 </div>
 
-<!-- WhatsApp Bulk Message Button -->
-<div class="mgt-10">
-    <a href="/send-bulk-whatsapp" class="btn-s-pri bdr-40  bg-gr-0"><i class="fas fa-paper-plane"></i> Send WhatsApp Message</a>
-</div>
+<script>
+  const un = document.querySelector('.uncleared');
+  function toggleUncleared() {
+    un.classList.toggle('flex');
+    un.classList.toggle('none');
+  }
 
+  function fillIn() {
+    let val = document.getElementById('ftype').textContent;
+    if (val) filter(val);
+  }
+
+  let studentsBackup = [];
+  let ascending = true;
+
+  function filter(value) {
+    fetch("/students", { method: "POST" })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.students) {
+          let students = data.students;
+          document.getElementById('ftype').textContent = value;
+
+          // Apply filters
+          if (value === 'feeBalance') {
+            students = students.filter(s => s.balance > 0);
+          } else if (value === 'adm') {
+            students.sort((a, b) => a.adm.localeCompare(b.adm));
+          } else if (value === 'name') {
+            students.sort((a, b) => a.name.localeCompare(b.name));
+          } else if (value === 'male' || value === 'female') {
+            students = students.filter(s => s.gender && s.gender.toLowerCase() === value);
+            students.sort((a, b) => a.name.localeCompare(b.name));
+          }
+
+          studentsBackup = students; 
+
+          buildTable(studentsBackup);
+
+          if (value) {
+            new swal({
+              text: `Filtered by ${value}`,
+              icon: 'success',
+              toast: true,
+              position: 'top-right',
+              showConfirmButton: false,
+              timer: 3000
+            });
+          }
+        } else {
+          new swal("Oops! An error occurred", "No data received.", "error");
+        }
+      })
+      .catch(err => {
+        new swal("Error!", "Something went wrong filtering students.", "error");
+        console.error(err);
+      });
+  }
+
+  function buildTable(students) {
+    let table = document.getElementById('table');
+    table.innerHTML = '';
+
+    if (students.length === 0) {
+      table.innerHTML = '<tr><td colspan="4" style="text-align: center;">No students match this filter</td></tr>';
+      return;
+    }
+
+    students.forEach(student => {
+      let tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${student.name}</td>
+        <td>${student.adm}</td>
+        <td>${student.phone}</td>
+        <td>Ksh ${Number(student.balance).toLocaleString()}</td>
+      `;
+      tr.addEventListener('click', () => {
+        window.location.href = `student?id=${student.id}`;
+      });
+      table.appendChild(tr);
+    });
+  }
+
+  // Sorting toggle
+  document.getElementById('order').addEventListener('click', () => {
+    ascending = !ascending;
+    studentsBackup.sort((a, b) => {
+      return ascending
+        ? a.name.localeCompare(b.name)
+        : b.name.localeCompare(a.name);
+    });
+    buildTable(studentsBackup);
+  });
+</script>
 {% endblock %}
