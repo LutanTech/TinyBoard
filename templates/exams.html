@@ -1,0 +1,259 @@
+{% extends "layout.html" %}
+{% block title %}Exams{% endblock %}
+{% block content %}
+<style>
+.examTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.examTable th, .examTable td {
+  padding: 8px;
+  text-align: center;
+  border: 1px solid grey;
+}
+.examTable th {
+  background-color: #f2f2f2;
+}
+.examTable td {
+  font-weight: bold;
+  cursor: pointer;
+  position: relative;
+}
+.examTable td input {
+  width: 100%;
+    text-align: center;
+    display: flex;
+    flex-grow: 1;
+    height: 100%;
+    top: 0;
+    position: absolute;
+    left: 0;
+    font-weight: 900;
+    color: blue;
+    font-size: large;
+}
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type=number] {
+    -appearance: textfield;
+  }
+
+  .sort{
+    border: 0;
+    border-radius: 40px ;
+    padding: 5px 10px;
+    float: right;
+  }
+  ._up{
+    background: orange;
+  }
+  ._down{
+    background: green;
+  }
+</style>
+
+<div class="content">
+  <div style="margin-bottom: 10px;">
+
+    <button class="sort _down" onclick="sortTable(false)" title="Largest First">
+      <i class="fas fa-solid fa-arrow-down"></i> 
+    </button>  
+      <button class="sort _up" onclick="sortTable(true)" title="Smallest First">
+      <i class="fas fa-solid fa-arrow-up"></i> 
+    </button>
+  </div>
+  
+  
+  <table class="examTable">
+    <thead>
+      <tr>
+        <th>No.</th>
+        <th>Student</th>      
+        {% for subject in subjects %}
+          <th>{{ subject.abr }}</th>
+        {% endfor %}
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      <tr>
+        <td class="row-number"></td>
+        <td>{{ student.name }}</td>
+        {% set total = 0 %} 
+        {% for subject in subjects %}
+          {% set grade = grades_map[student.adm][subject.id] %}
+          <td class="editable" data-student="{{ student.adm }}" data-subject="{{ subject.id }}" data-id="{{ subject.id }}-{{ student.adm }}">
+            {% if grade %}
+              <span class="grade-value" data-id="{{ subject.id }}-{{ student.adm }}">{{ grade.total }}</span>
+            {% else %}
+              <span class="grade-value">0</span>
+            {% endif %}
+          </td>
+        {% endfor %}
+        <td id='{{ student.adm }}-total' class="bg-b-0 bd-1">{{ student_totals[student.adm] }}</td> 
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  sortTable(false)
+  let cells = document.querySelectorAll('.editable');
+  function checkCells(){
+  let spans = document.querySelectorAll('.editable .grade-value');
+  spans.forEach(span=>{
+    value = parseFloat(span.textContent)
+    if(value > 100){
+      let cell = span.parentElement
+      cell.style.border = '2px solid red';
+      cell.title = 'Invalid Value'
+      cell.style.background = 'red'
+      cell.style.color = 'white'
+      cell.setAttribute('invalid', 'true')
+    } else if(value < 100){
+      let cell = span.parentElement
+      cell.style = ''
+    }
+  })
+}
+checkCells()
+  let invalidSpans = document.querySelectorAll('[invalid="true"]');
+  console.log(invalidSpans.length)
+
+  cells.forEach(cell => {
+    let stId = cell.getAttribute('data-student');
+    let sbId = cell.getAttribute('data-subject');
+    let cellId = `${stId}-${sbId}`;
+
+    cell.setAttribute('data-id', cellId);
+
+    cell.addEventListener('click', function () {
+      if (this.querySelector('input')) return;
+
+      let span = this.querySelector('.grade-value');
+      let spanVal = span.textContent;
+
+      let input = document.createElement('input');
+      input.type = 'number';
+      input.value = spanVal;
+      input.min = '0';
+      input.max = '100';
+      input.setAttribute('data-id', cellId);
+      input.style.border = '1px solid #ccc';
+
+      input.addEventListener('input', () => {
+        let value = parseFloat(input.value);
+        let inputId = input.getAttribute('data-id');
+        checkValidity(value, inputId);
+      });
+
+      this.innerHTML = '';
+      this.appendChild(input);
+      input.focus();
+      checkCells()
+
+      input.addEventListener('blur', () => {
+        let newGrade = input.value;
+        fetch('/update_grade', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            student_adm: stId,
+            subject_id: sbId,
+            grade: newGrade
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            checkCells()
+
+            let span = document.createElement('span');
+            span.classList.add('grade-value');
+            span.textContent = data.grade;
+            cell.innerHTML = '';
+            cell.appendChild(span);
+            let totalSpan = document.getElementById(`${data.adm}-total`)
+            totalSpan.textContent  = data.total
+
+          } else {
+            alert('Failed to update grade');
+          }
+        })
+        .catch(error => console.log(error));
+        checkCells()
+
+      });
+    });
+  });
+});
+
+function checkValidity(value, inputId) {
+  let input = document.querySelector(`[data-id="${inputId}"]`);
+  if (value > 100 || value < 0) {
+    console.warn('Invalid value:', value);
+    let cell = input.parentElement
+    if (input) {
+      input.title = 'Please enter a value between 0 and 100';
+      input.style.border = '2px solid red';
+      cell.style.border = '2px solid red';
+      cell.title = 'Invalid Value'
+      cell.style.background = 'red'
+      cell.style.color = 'white'
+      cell.setAttribute('invalid', 'true')
+    }
+  } else {
+    let cell = input.parentElement
+
+    if (input){ 
+      input.style.background = '';
+      input.style.border = '2px solid rgb(0,202,0)';
+
+      input.style.color = 'black'
+
+    cell.style.background = ''
+    cell.style.color = 'black'
+    cell.style.border = '1px solid #000';
+
+
+  }
+  }
+}
+
+
+function sortTable(ascending = true) {
+  const table = document.querySelector('.examTable tbody');
+  const rows = Array.from(table.querySelectorAll('tr'));
+
+  rows.sort((a, b) => {
+    const aTotal = parseFloat(a.querySelector('td:last-child').textContent) || 0;
+    const bTotal = parseFloat(b.querySelector('td:last-child').textContent) || 0;
+    return ascending ? aTotal - bTotal : bTotal - aTotal;
+  });
+
+  rows.forEach(row => table.appendChild(row));
+
+  updateRowNumbers(); // Re-number after sorting
+}
+function updateRowNumbers() {
+  const rows = document.querySelectorAll('.examTable tbody tr');
+  rows.forEach((row, index) => {
+    let numberCell = row.querySelector('.row-number');
+    if (numberCell) {
+      numberCell.textContent = index + 1;
+    }
+  });
+}
+
+updateRowNumbers();
+
+</script>
+{% endblock %}

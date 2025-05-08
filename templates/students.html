@@ -39,7 +39,7 @@
         onclick="window.location.href='/student?id={{ student.id }}'">
         <td>{{ student.name }}</td>
         <td>{{ student.adm }}</td>
-        <td>{{ student.gender }}</td>
+        <td style="text-transform: capitalize;">{{ student.st_gender }}</td>
         <td class="f-s-xs">{{ student.email }}</td>
         <td class="f-s-s">{{ student.phone1 }}</td>
         <td>
@@ -69,7 +69,7 @@
         <a href="" class="btn-s-pri bdr-40 bg-gr-0"><i class="fas fa-paper-plane"></i> Send Message</a>
       </div>
       <div class="mgt-10">
-        <a href="javascript:void(0);" onclick="fillIn()" class="btn-s-pri bdr-40 bg-gr-0"><i
+        <a href="javascript:void(0);" onclick="fillIn()" class="btn-s-pri bdr-40 bg-bl-0"><i
             class="fas fa-refresh"></i> Refresh</a>
       </div>
     </div>
