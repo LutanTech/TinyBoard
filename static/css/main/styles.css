@@ -21,6 +21,7 @@ body, html {
     position: fixed;
     top: 0;
     left: 0;
+    z-index: 200000;
     padding-top: 10px;
     box-shadow: 2px 0 10px rgba(0,0,0,0.2);
     transition: width 0.5s ease;
@@ -66,7 +67,7 @@ body, html {
     }
     .content{
         margin-left: 0 !important;
-        font-size:small !important;
+        font-size:x-small !important;
     }
     .card{
         transform: translateX(-10px);
@@ -80,6 +81,10 @@ body, html {
             transform: translateX(0px);
     
         }
+    }
+    .content{
+        margin-left: 53px !important;
+        font-size:small !important;
     }
 
 }
@@ -141,12 +146,12 @@ body, html {
 /* Menu Toggle */
 .menu-toggle {
     background: rgb(3, 3, 76);
-    position: absolute;
+    position: fixed;
     right: -35px;
     width: 40px;
     transform: translateX(55px);
     height: 40px;
-    z-index: 10;
+    z-index: 10000 !important;
     top: 10px;
     opacity: 1;
     border-radius: 10px;
@@ -155,6 +160,7 @@ body, html {
     align-items: center;
     flex-direction: column;
     gap: 5px;
+    transition: all 1s ease-in-out;
 }
 
 .menu-toggle span {

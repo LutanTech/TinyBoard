@@ -19,8 +19,8 @@
             <span></span><span></span><span></span>
         </div>
         <div class="div flex col jst-cn aln-cn gap-10">
-            <div class="logo pd-10 bdr-50"></div>
-            <div class="name">eZone</div>
+            <img class="logo pd-10 bdr-50" src="{{ school.pic }}" >
+            <div class="name cl-w">{{ school.name }}</div>
         </div>
         <ul class="pc-ul flex col jst-cn grow gap-5">
             <li data-href="/staff_dashboard">
@@ -92,7 +92,7 @@
         {% endwith %}
     </div>
 
-    <div class="content flex row wrap" style="margin-left: 55px !important;">
+    <div class="content flex row wrap">
         <form id="search-form" onsubmit="return false;">
             <input type="text" id="query" placeholder="Search students..." oninput="debouncedSearch()" />
             <select id="filter_type">
