@@ -3,101 +3,117 @@
 {% block content %}
 <link rel="stylesheet" href="../static/css/main/dshb.css">
 <link rel="stylesheet" href="../static/css/imports/tailwind.css">
-<style>
-            input, select {
-            border: none;
-            border-bottom: 1px solid #ccc !important;
-            background: transparent !important;
-            width: 100%  !important;
-            padding: 5px  !important;
-            margin-top: 5px  !important;
-            border-radius: 0  !important;
-            text-align: center  !important;
-        }
-        input:focus, select:focus {
-            outline: none  !important;
-            border: 0  !important;
-            border-bottom: 2px solid #4a90e2  !important;
-            background: transparent  !important;
-        }
-        label {
-            font-weight: bold  !important;
-            margin-top: 10px  !important;
-        }
-</style>
-<div class="details flex wrap jst-cn aln-cn mg-au">
-    <div class=" details flex   gap-5 mg-5">
-        {% if subjects %}
-        {% for subject in subjects %}
-        <div class="flex col jst-cn aln-cn card">
-            <h2> Subject ID: {{ subject.id }}</h2>
-            <p> Subject Name: {{ subject.name }}</p>
-            <h2>Grade: {{ subject.grade }}</h2>
-            <form id="drop-form-{{subject.id}}" action="/drop_subject/{{subject.id}}/{{teacher.id}}" method="post">
-                <button type="button" style="width: 130px !important;" class="btn-s-pri bdr-40 bg-bl-0" onclick="confirmDrop('{{subject.id}}')">Drop Subject</button>
-            </form>
-            
-            <script>
-            function confirmDrop(subjectId) {
-                new swal({
-                    title: "Are you sure?",
-                    text: "This will permanently delete the subject!",
-                    icon: "warning",
-                }).then((willDelete) => {
-                    if (willDelete) {
-                        document.getElementById('drop-form-' + subjectId).submit();
-                    }
-                    else{
-                        return;
-                    }
-                });
-            }
-            </script>
-            
-        </div>
-        {% endfor %}
 
-                {% else %}
-                <div class="div card">
-                    <p class="bld">You haven't added any Subjects </p>
-                </div>
-            {% endif %}
-            <button type="button" class="btn-s-pri bg-bl-0 bdr-40 hover-bl tr-s-ease tr-all tr-dur-05">
-                Add Subject
-            </button>
-                </div>
-                <form action="/add_subject" class="form flex col pd-10 bd-1 card bdr-10 jst-cn mn" method="POST">
-                    <label for="name">Enter Subject Name</label>
-                    <input type="text" name="name">
-                    <label for="abr"> Enter Subject Abbreviation</label>
-                    <input type="text" name="abr">
-                    <label for="grade"> Enter Grade </label>
-                    <input type="text" name="grade">
-                    <button class="btn-s-pri mgt-10 bdr-40 bg-gr-0 mg-au" type="submit">Add</button>
-                </form>
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex flex-wrap gap-5 justify-center mb-10">
+        {% if subjects %}
+            {% for subject in subjects %}
+            <div id="subject-card-{{ subject.id }}" class="bg-gradient-to-r from-green-200 via-white to-cyan-100 border border-gray-300 rounded-xl shadow-md p-6 w-64 text-center transition-opacity duration-500">
+                <h2 class="text-lg font-semibold text-gray-700">Subject ID: {{ subject.id }}</h2>
+                <p class="text-md text-gray-600 mt-1">Name: <span class="font-medium">{{ subject.abr }}</span></p>
+                <h2 class="text-md text-gray-600 mt-1">Grade: <span class="font-medium">{{ subject.grade }}</span></h2>
+                <button type="button"
+                        class="mt-4 w-full py-2 px-4 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-300"
+                        onclick="confirmDrop('{{ subject.id }}', '{{ teacher.id }}')"
+                        aria-label="Drop subject {{ subject.abr }} with ID {{ subject.id }}">
+                    Drop Subject
+                </button>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="bg-white border border-gray-300 rounded-xl shadow p-6">
+                <p class="text-center font-semibold text-gray-600">You haven't added any subjects</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Hidden Teacher ID for easy access -->
+    <span id="trId" data-id="{{ teacher.id }}"></span>
+
+    <form action="/add_subject" method="POST" class="bg-white border border-gray-200 rounded-xl shadow p-6 w-full max-w-md mx-auto space-y-4">
+        <label for="name" class="block font-semibold text-gray-700">Enter Subject Name</label>
+        <input type="text" name="name" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" aria-label="Enter subject name" />
+
+        <label for="abr" class="block font-semibold text-gray-700">Enter Subject Abbreviation</label>
+        <input type="text" name="abr" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" aria-label="Enter subject abbreviation" />
+
+        <label for="grade" class="block font-semibold text-gray-700">Enter Grade</label>
+        <input type="text" name="grade" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" aria-label="Enter subject grade" />
+
+        <button type="submit"
+                class="w-full py-2 mt-4 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors duration-300"
+                aria-label="Add new subject">
+            Add Subject
+        </button>
+    </form>
 </div>
+
+<!-- Loading Spinner -->
+<div id="loading-spinner " class="fixed inset-0 flex justify-center items-center bg-gray-900 bg-opacity-50 hidden z-50 none">
+    <div class="w-16 h-16 border-4 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
+</div>
+
+<script>
+function confirmDrop(subjectId, teacherId) {
+    Swal.fire({
+        title: "Are you sure?",
+        text: "This will permanently delete the subject!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, delete it!"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show the loading spinner
+            // document.getElementById("loading-spinner").classList.remove("hidden");
+
+            fetch(`/drop_subject/${subjectId}/${teacherId}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                // Hide the loading spinner
+                // document.getElementById("loading-spinner").classList.add("hidden");
+
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+
+                    const card = document.getElementById('subject-card-' + subjectId);
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 500);
+                } else {
+                    Swal.fire('Error!', data.message, 'error');
+                }
+            })
+            .catch(() => {
+                // Hide the loading spinner
+                // document.getElementById("loading-spinner").classList.add("hidden");
+                Swal.fire('Error!', 'Something went wrong.', 'error');
+            });
+        }
+    });
+}
+</script>
+
 <div class="flash-container">
     {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-        <script>
-            Swal.fire({
-                icon: "{{ category }}",
-                html: "{{ message }}",
-                toast: true,
-                position: "top-end",
-                showConfirmButton: false,
-                timer: 3000
-            });
-        </script>
-        {% endfor %}
-    {% endif %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <script>
+                Swal.fire({
+                    icon: "{{ category }}",
+                    html: "{{ message }}",
+                    toast: true,
+                    position: "top-end",
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            </script>
+            {% endfor %}
+        {% endif %}
     {% endwith %}
-    
-
-
-
 </div>
 {% endblock %}
-
-

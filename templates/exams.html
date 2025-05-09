@@ -47,12 +47,29 @@
     border-radius: 40px ;
     padding: 5px 10px;
     float: right;
+    margin: 5px;
   }
   ._up{
     background: orange;
   }
   ._down{
     background: green;
+  }
+  @media print {
+    .sidebar{
+      display: none !important;
+    }
+    .sort{
+      display: none !important;
+    }
+    #search-form{
+      display: none !important;
+    }
+    .print{
+      display: none !important;
+    }
+    
+    
   }
 </style>
 
@@ -67,7 +84,9 @@
     </button>
   </div>
   
-  
+  <div class="printable">
+    <button onclick="printWindow()" class="btn-s-pri bdr-40 bg-gr-0 pd-5 bd-1 bd-cl-bk mg-5 print"><i class="fas fa-print"></i> Print</button>
+    <span id="trId" data-id="{{ teacher.id }}"></span>
   <table class="examTable">
     <thead>
       <tr>
@@ -101,7 +120,12 @@
     </tbody>
   </table>
 </div>
+</div>
 <script>
+  function printWindow(){
+    window.print()
+  }
+
 document.addEventListener('DOMContentLoaded', () => {
   sortTable(false)
   let cells = document.querySelectorAll('.editable');
@@ -160,6 +184,7 @@ checkCells()
 
       input.addEventListener('blur', () => {
         let newGrade = input.value;
+        let trId = document.getElementById('trId').getAttribute('data-id')
         fetch('/update_grade', {
           method: 'POST',
           headers: {
@@ -168,7 +193,8 @@ checkCells()
           body: JSON.stringify({
             student_adm: stId,
             subject_id: sbId,
-            grade: newGrade
+            grade: newGrade,
+            trId : trId
           })
         })
         .then(response => response.json())
