@@ -106,6 +106,7 @@ class Notification(db.Model):
     read_by = db.Column(JSON, nullable=True)
     sender = db.Column(db.String(500), nullable=False)
     grade = db.Column(db.String(100), nullable=False)
+    date = db.Column(db.String(100), nullable=False)
 
 class Grade(db.Model):
     __tablename__ = 'grade'
@@ -516,20 +517,27 @@ def exams():
         student_totals=student_totals  # Pass the total grades to the template
     )
 
-
 @app.route('/update_grade', methods=['POST'])
 def update_grade():
     data = request.get_json()
     student_adm = data.get('student_adm')
     subject_id = data.get('subject_id')
-    new_grade = data.get('grade')
+    trId = data.get('trId')
+
+    try:
+        new_grade = int(data.get('grade'))
+        trId = int(trId)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid grade or teacher ID format"}), 400
+
+    subject = Subject.query.filter_by(teacher_id=trId).first()
 
     print(f"Received data: student_adm={student_adm}, subject_id={subject_id}, new_grade={new_grade}")
 
-    if student_adm and subject_id is not None and new_grade is not None:
+    if subject and student_adm and subject_id is not None and trId == subject.teacher_id:
         grade = Grade.query.filter_by(student_adm=student_adm, subject_id=subject_id).first()
         if grade:
-            grade.exam1 = int(new_grade)
+            grade.exam1 = new_grade
             db.session.commit()
 
             all_grades = Grade.query.filter_by(student_adm=student_adm).all()
@@ -539,13 +547,15 @@ def update_grade():
                 "success": True,
                 "grade": new_grade,
                 "adm": student_adm,
+                "tr": trId,
                 "total": total
             }), 200
         else:
             print('Grade not found, returning 400')
             return jsonify({"error": "Grade not found"}), 400
 
-    return jsonify({"error": "Invalid data"}), 400
+    return jsonify({"error": "Invalid data or unauthorized"}), 400
+
 
 
 
@@ -565,7 +575,7 @@ def subjects():
         teacher = Teacher.query.get(session.get('staff_id'))
         students = Student.query.filter_by(grade=teacher.grade).all()  
         subjects = Subject.query.filter_by(teacher_id=id).all()
-        subject_list = [{"id": subject.id, "name": subject.name, 'grade' : subject.grade} for subject in subjects]
+        subject_list = [{"id": subject.id, "abr": subject.abr, 'grade' : subject.grade} for subject in subjects]
 
         return render_template(
             "subjects.html",
@@ -585,7 +595,7 @@ def subjects():
                 teacher = Teacher.query.filter_by(id=subject.teacher_id).first()
                 subjects_list.append({
                     'id': subject.id,
-                    'name': subject.name,
+                    'abr': subject.abr,
                     'grade': subject.grade,
                     'teacher': teacher.name,
                     'teacher_phone': teacher.phone1
@@ -689,22 +699,22 @@ def change_teacher_class(teacher_id):
         db.session.rollback()
         return jsonify({'status': 'error', 'message': f'Commit failed: {str(e)}'}), 500
 
-@app.route('/drop_subject/<int:subject_id>/<int:teacher_id>', methods=['POST'])
+@app.route('/drop_subject/<int:subject_id>/<teacher_id>', methods=['POST'])
+
 def drop_subject(subject_id, teacher_id):
-    subject = Subject.query.filter_by(id=subject_id, teacher_id=teacher_id).first()
+    subject = Subject.query.get(subject_id)
 
     if not subject:
-        return jsonify({'status': 'error', 'message': 'Subject not found or not owned by this teacher'}), 404
+        return jsonify({'status': 'error', 'message': 'Subject not found.'})
 
     try:
         db.session.delete(subject)
         db.session.commit()
-        flash('subject dropped succesfully', 'success')
-        return redirect(url_for('subjects'))
+        return jsonify({'status': 'success', 'message': 'Subject dropped successfully!'})
     except Exception as e:
         db.session.rollback()
-        flash('subject drop failed', 'error')
-        return redirect(url_for('subjects'))
+        return jsonify({'status': 'error', 'message': 'Failed to drop subject.'})
+
 
 
 @app.route("/update_teacher", methods=["POST"])
@@ -712,6 +722,8 @@ def drop_subject(subject_id, teacher_id):
 def update_teacher():
     teacher = Teacher.query.get(current_user.id)
     teacher.phone1 = request.form.get("phone", teacher.phone1)
+    teacher.name = request.form.get("name", teacher.name)
+    teacher.pic = request.form.get("pic", teacher.pic)
     teacher.email = request.form.get("email", teacher.email)
     try:
         db.session.commit()
@@ -784,8 +796,9 @@ def add_notification():
     title = request.form.get('title')
     priority = request.form.get('priority')
     content= request.form.get('content')
+    date= request.form.get('date')
     if request.method == 'POST':
-        new_notif = Notification(name=title, priority=priority, content=content, sender=teacher.name, grade=teacher.grade)
+        new_notif = Notification(name=title, priority=priority, content=content, sender=teacher.name, grade=teacher.grade, date=date)
         try:
             db.session.add(new_notif)
             db.session.commit()

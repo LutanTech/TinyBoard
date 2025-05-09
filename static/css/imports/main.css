@@ -564,3 +564,11 @@
 .tr-s-ease{
   transform-style: ease !important;
 }
+.bg-dt{
+background: darkturquoise !important;
+}
+.active-sc-098{
+  &:active{
+    scale: 0.98 !important;
+  }
+}
