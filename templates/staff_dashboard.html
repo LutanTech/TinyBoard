@@ -6,12 +6,13 @@
 <link rel="stylesheet" href="../static/css/main/staff_dshb.css">
 <div class="flex col  pd-10 w-100">
     <h1 class="f-s-l cl-bl txt-cn w-100">Welcome, {{ teacher.name }}</h1>
-    <p class="f-s-s cl-bl-1">Handling Grade: {{ teacher.grade }}</p>
+    <p class="f-s-s cl-bl-1">Handling Form: {{ teacher.grade }}</p>
     <hr class="w-100">
 
     </div>
+    {% if teacher and teacher.is_admin %}
 
-    <h2 class="f-s-l mgt-20">Available Teachers by Grade</h2>
+    <h2 class="f-s-l mgt-20">Available Teachers by Form</h2>
     <div class="table-responsive w-100 mg-t-10">
         <table class="table w-100 bd-1 bg-w">
             <thead class=" cl-w">
@@ -19,7 +20,7 @@
                     <th>Teacher Name</th>
                     <th>ID</th>
                     <th>Phone</th>
-                    <th>Grade</th>
+                    <th>Form</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -54,9 +55,12 @@
             <input type="text" name="password" id="password" class="input f-s-s bd-1 bd-cl-grey" placeholder="Create Access Key" title="Used To access Database" autocomplete="off" aria-autocomplete="none">
             <input type="password" name="confirm_password" id="confirm_password" class="input f-s-s bd-1 bd-cl-grey" placeholder="Confirm Access Key" title="Used To access Database">
             <input type="text" name="abr" id="abr" class="input f-s-s bd-1 bd-cl-grey" placeholder="Enter School Abbreviation">
+            <input type="text" name="address" id="address" class="input f-s-s bd-1 bd-cl-grey" placeholder="Enter School Adress" required>
+            <input type="email" name="email" id="email" class="input f-s-s bd-1 bd-cl-grey" placeholder="Enter School Email" required>
+            <input type="tel" name="phone" id="phone" class="input f-s-s bd-1 bd-cl-grey" placeholder="Enter School Phone" required>
             <label for="pic">Enter School logo Pic</label>
             <input type="file" name="pic-input" id="pic-input" class="input f-s-s bd-1 bd-cl-grey" placeholder="Enter Logo">
-            <input type="text" name="pic" id="pic" class="input f-s-s bd-1 bd-cl-grey" placeholder="Enter Logo">
+            <input type="text" name="pic" id="pic" class="input f-s-s bd-1 hidden  bd-cl-grey" placeholder="Enter Logo">
             <input type="submit"  class="bdr-40 btn-s-pri bg-gr-0 bd-1 bd-cl-grey" placeholder="Enter Logo">
             <p></p>
             <span id="errorDiv" style="color: red; font-weight: bold;"></span>
@@ -115,7 +119,19 @@ function showError(message){
     ed.textContent = message
 }
         </script>
+
     </div>
+</div>
+{% endif %}
+<div class="normalTeacher flex row wrap jst-cn aln-cn">
+<div class="card" data-href="add_student">
+    <i class="fas fa-user-plus"></i> Add <br> Student</div>
+<div class="card" data-href="students">Your Class</div>
+<div class="card" data-href="subjects">Your Subjects</div>
+<div class="card" data-href="exams">Exams</div>
+<div class="card" data-href="profile?dest=notifications">Notifications</div>
+<div class="card" data-href="profile">Settings</div>
+
 </div>
 <div class="flash-container">
     {% with messages = get_flashed_messages(with_categories=true) %}

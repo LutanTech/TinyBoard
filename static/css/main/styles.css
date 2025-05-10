@@ -342,8 +342,20 @@ body, html {
     }
 }
 #filterType{
-    width: 200px;
+    max-width: 400px;
     float: right;
     position: sticky;
     top: 0;
+}
+.examTable{
+    td{
+        border: 1px solid  black !important;
+    }
+}
+@media print {
+    .examTable td:last-of-type{
+        border-bottom: 2px solid black !important;
+        border-left: 2px solid black !important;
+        background: rgb(208, 208, 208);
+    }
 }

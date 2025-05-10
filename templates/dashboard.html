@@ -11,9 +11,9 @@
     <div class="card student-info">
         <p class="w-100 txt-cn"> <i class="fas fa-user"></i> </p>
         <h3>Student Details</h3>
-        <p><strong>ADM No:</strong> <span>{{ student.adm }}</span></p>
+        <p id="name" data-id="{{ student.id }}"><strong>ADM No:</strong> <span>{{ student.adm }}</span></p>
         <p><strong>Name:</strong> <span>{{ student.name }}</span></p>
-        <p><strong>Grade/ Stream/ Class:</strong> <span>{{ student.grade }}</span></p>
+        <p><strong>Stream/ Form:</strong> <span>{{ student.grade }}</span></p>
         <p><strong>Gender:</strong> <span>{{ student.st_gender }}</span></p>
         <p><strong>Primary Guardian Contact:</strong> <span>{{ student.phone1 }}</span></p>
         <hr>
@@ -93,11 +93,20 @@
       const flDiv = document.createElement('div')
       flDiv.style.gap = '10px !important'
       data.subjects.forEach(subject => {
-        flDiv.classList.add('wrap',  'card','flex','txt-cn', 'gap-10', 'mg-5')
+        flDiv.classList.add('wrap',  'card','flex','txt-cn', 'gap-10', 'mg-5', 'jst-cn', 'aln-cn')
         const div = document.createElement('div');
-        div.classList.add('card', 'mg-5', 'bd-1', 'mg-10' ,'mxw-500', 'jst-cn','bg-dt', 'c-p', 'aln-cn', 'active-sc-098')
+        div.classList.add('card', 'mg-5', 'bd-1', 'mg-10' ,'mxw-500','jst-cn','bg-gr-dk', 'c-p', 'aln-cn', 'active-sc-098')
         div.innerHTML = `<p><h2>${subject.abr}</h2></p> <h4>Teacher:  ${subject.teacher}</h4> <p> Teacher's Phone: <a href='tel:${subject.teacher_phone}'> ${subject.teacher_phone}</a></p>  `;
         flDiv.appendChild(div)
+        let stored = document.getElementById('name').getAttribute('data-id');
+        if(stored == subject.studentId){
+         var isAllowed = 'True'}
+            else{
+         var isAllowed = 'False'
+          }
+        div.addEventListener('click', ()=>{
+          window.location.href=`subject?sdId=${subject.studentId}&sbId=${subject.id}&alState=${isAllowed}`
+        })
       });
       subjectsDiv.appendChild(flDiv);
     })

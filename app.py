@@ -17,16 +17,22 @@ import string
 import secrets
 import base64
 import requests
+from flask_cors import CORS 
+from flask_httpauth import HTTPBasicAuth
+from functools import wraps
+from flask import request, Response
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///main.db'
 app.config['SECRET_KEY'] = 'supersecretkey'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 print(app.url_map)
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'portal'
 migrate = Migrate(app, db)
+
+CORS(app)
 
 def generate_rand_id(length=6):
     characters = string.ascii_letters + string.digits
@@ -36,9 +42,23 @@ class School(UserMixin, db.Model):
     id = db.Column(db.String, primary_key=True, default=lambda: str(uuid.uuid4()), unique=True)
     name = db.Column(db.String(300), nullable=False)
     abr = db.Column(db.String(30), nullable=False)
-    pic = db.Column(db.Text, nullable=False)
+    address = db.Column(db.String(30), nullable=False)
+    email = db.Column(db.String(30), nullable=False)
+    phone = db.Column(db.String(30), nullable=False)
+    logo = db.Column(db.Text, nullable=False)
     admin_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'abr': self.abr,
+            'address': self.address,
+            'email': self.email,
+            'phone': self.phone,
+            'logo': self.logo,
+            'admin_id': self.admin_id,
+        }
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -122,6 +142,11 @@ class Grade(db.Model):
     @hybrid_property
     def total(self):
         return (self.exam1 or 0) + (self.exam2 or 0)
+    
+class Transcript(db.Model):
+    id = db.Column(db.String, primary_key=True,  unique=True, default=generate_rand_id)
+    student_id = db.Column(db.String(500), nullable=False)
+    hash = db.Column(db.String(500), nullable=False)
 
 
 class Subject(db.Model):
@@ -191,7 +216,7 @@ def search():
             'email': s.email,
             'grade': s.grade,
             'st_gender': s.st_gender,
-            'subjects': s.subjects
+            'pic': s.pic
         } for s in students.items]
 
         return jsonify({
@@ -218,6 +243,69 @@ def index():
     school = School.query.first()
     return render_template('index.html',school=school )
 
+
+
+auth = HTTPBasicAuth()
+users = {}  
+
+def login_require(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not verify_credentials(auth.username, auth.password):
+            return Response(
+                'Unauthorized Access.\nPlease provide valid credentials.', 401,
+                {'WWW-Authenticate': 'Basic realm="Login Required"'}
+            )
+        return f(*args, **kwargs)
+    return decorated
+
+def verify_credentials(username, password):
+    if username in users and check_password_hash(users[username], password):
+        return True
+    return False
+
+@app.route('/cashier', methods=['POST'])
+@login_require
+def cashier():
+    # use your real models here
+    school = School.query.first()
+    students = Student.query.all()
+    
+    return jsonify({
+        "school": school.to_dict() if school else {},
+        "students": [{
+            'id': s.id,
+            'name': s.name,
+            'adm': s.adm,
+            'grade': s.grade,
+            "billed": s.billed,
+            "paid": s.paid,
+            "balance": s.balance
+        } for s in students]
+    })
+
+@app.route('/update_finances', methods=['POST'])
+@login_require
+def update_finances():
+    adm = request.args.get('adm')
+    student = Student.query.filter_by(adm=adm).first()
+
+    if not student:
+        flash('Student not found.', 'danger')
+        return redirect(url_for('staff_dashboard'))
+
+    try:
+        student.billed = int(request.form['billed'])
+        student.paid = int(request.form['paid'])
+        student.balance = student.billed - student.paid
+        db.session.commit()
+        flash('Student finance status updated successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating finances: {e}', 'danger')
+
+    return jsonify('success')
 
 @app.route('/profile')
 def profile():
@@ -264,7 +352,7 @@ def staff_dashboard():
     students = Student.query.filter_by(grade=teacher.grade).all()
     teachers = Teacher.query.filter_by(is_active=True).all()
     print(f"School is: {school}")
-    if teacher.name == 'Default' and (not school or school is None):
+    if teacher.name == 'Lutan' and (not school or school is None):
         flash('Add School Details First', 'info')
         return render_template(
             'staff_dashboard.html',
@@ -363,6 +451,10 @@ def areas():
     return jsonify({'students' : data})
 
 
+
+
+
+
 @app.route('/update_student', methods=['POST'])
 @login_required
 def update_student():
@@ -382,8 +474,6 @@ def update_student():
     student.phone1 = request.form['phone1']
     student.phone2 = request.form.get('phone2', None)
     student.phone3 = request.form.get('phone3', None)
-    student.billed = int(request.form['billed'])
-    student.paid = int(request.form['paid'])
 
     db.session.commit()
     
@@ -434,7 +524,12 @@ def add_school():
         name=data['name'],
         abr=data['abr'],
         admin_id = current_user.id,
-        pic=data['pic']
+        logo=data['pic'],
+        address=data['address'],
+        phone=data['phone'], 
+        email=data['email']
+
+
     )
     school.set_password(data['password'])
     db.session.add(school)
@@ -470,10 +565,13 @@ def add_student():
             phone3=data.get('phone3'),
             pic=data.get('pic') or "https://i.ibb.co/wNQGbTGf/default.jpg"
         )
-        print(student.name,student.pic )
         student.set_password(f"student{data['adm']}")
+        subjects = Subject.query.filter_by(grade=student.grade).all()
         db.session.add(student)
-        db.session.commit()
+        for subject in subjects:
+            new_grade = Grade(subject_id=subject.id, student_adm=student.adm, teacher_id=teacher.id, exam1=0, exam2=0)
+            db.session.add(new_grade)
+            db.session.commit()
         flash("Student added successfully!", "success")
         return redirect(url_for('add_student'))
 
@@ -493,9 +591,7 @@ def exams():
     subjects = Subject.query.filter_by(grade=teacher.grade).all()
 
     grades_map = {}
-    student_totals = {}  # Initialize a dictionary to hold the total for each student
-
-    # Populate grades_map and calculate total grades for each student
+    student_totals = {}  
     for student in students:
         grades_map[student.adm] = {}
         total = 0
@@ -503,9 +599,9 @@ def exams():
             grade = Grade.query.filter_by(student_adm=student.adm, subject_id=subject.id).first()
             grades_map[student.adm][subject.id] = grade
             if grade:
-                total += grade.total  # Add the grade to the total if it exists
+                total += grade.total  
         
-        student_totals[student.adm] = total  # Store the total grade for each student
+        student_totals[student.adm] = total 
 
     return render_template(
         'exams.html',
@@ -514,8 +610,49 @@ def exams():
         subjects=subjects,
         school=school,
         grades_map=grades_map,
-        student_totals=student_totals  # Pass the total grades to the template
+        student_totals=student_totals  
     )
+from flask_login import login_required, current_user
+from datetime import datetime
+
+@app.route('/transcript')
+@login_required
+def transcript():
+    school = School.query.first()
+    student = Student.query.get(current_user.id)
+
+    if not student:
+        flash("Student not found!", "error")
+        return redirect(url_for('student_portal'))  
+
+    subjects = Subject.query.filter_by(grade=student.grade).all()
+
+    grades_map = {}
+    total = 0
+
+
+
+    for subject in subjects:
+        grade = Grade.query.filter_by(student_adm=student.adm, subject_id=subject.id).first()
+        grades_map[subject.id] = grade
+        if grade:
+            total += grade.total
+
+    total_score = sum(g.total for g in grades_map.values() if g)
+    subject_count = len(subjects)
+    mean_score = round(total_score / subject_count, 4) if subject_count > 0 else 0
+
+    return render_template(
+        'transcript.html',
+        student=student,
+        subjects=subjects,
+        grades_map=grades_map,
+        school=school,
+        now=datetime.now(),
+        mean_score=mean_score,
+        total_score=total
+    )
+
 
 @app.route('/update_grade', methods=['POST'])
 def update_grade():
@@ -562,9 +699,10 @@ def update_grade():
 @app.route('/finances')
 @login_required
 def finances():
+    school = School.query.first()
     student = Student.query.get(session.get('student_id'))
     dest = request.args.get('dest')
-    return render_template('finance.html', dest=dest, student=student)
+    return render_template('finance.html', dest=dest, student=student, school=school)
 
 @app.route("/subjects")
 def subjects():
@@ -598,7 +736,9 @@ def subjects():
                     'abr': subject.abr,
                     'grade': subject.grade,
                     'teacher': teacher.name,
-                    'teacher_phone': teacher.phone1
+                    'teacher_id': teacher.id,
+                    'teacher_phone': teacher.phone1,
+                    'studentId': student.adm
                 })
 
             flash('Updated subjects','success')
@@ -607,6 +747,91 @@ def subjects():
             })
         flash('success', 'success')
         return redirect(url_for('dashboard'))
+from collections import Counter
+
+def checkUser():
+    if not current_user.is_authenticated:
+        flash('Please log in to access this page.', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/subject')
+def subject():
+    school = School.query.first()
+    stId = request.args.get('sdId')
+    sbId = request.args.get('sbId')
+
+    if not stId or not sbId:
+        flash('Missing subject details', 'error')
+        return redirect(url_for('dashboard'))
+
+    if not current_user.is_authenticated:
+        flash('You must be logged in to view subject details', 'error')
+        return redirect(url_for('dashboard'))
+
+    student = Student.query.filter_by(adm=stId).first()
+    current_student = Student.query.get(current_user.id)
+
+    if not student or student.adm != current_student.adm:
+        flash('Student not found or access denied', 'error')
+        return redirect(url_for('dashboard'))
+
+    subject_grade = Grade.query.filter_by(student_adm=student.adm, subject_id=sbId).first()
+    if not subject_grade:
+        flash('Subject grade not found', 'error')
+        return redirect(url_for('dashboard'))
+
+    subject_info = Subject.query.filter_by(id=sbId).first()
+    class_grades = Grade.query.filter_by(subject_id=sbId).all()
+    grade_values = [g.exam1 for g in class_grades if g.exam1 is not None]
+
+    grade_numeric = []
+    for g in grade_values:
+        try:
+            grade_numeric.append(float(g))
+        except ValueError:
+            continue
+
+    if grade_numeric:
+        class_mean = round(sum(grade_numeric) / len(grade_numeric), 2)
+        highest_grade = max(grade_numeric)
+        lowest_grade = min(grade_numeric)
+    else:
+        class_mean = highest_grade = lowest_grade = 'N/A'
+
+    range_buckets = [0] * 11
+    for g in grade_numeric:
+        index = min(int(g) // 10, 10)
+        range_buckets[index] += 1
+    range_labels = [f"{i*10}-{i*10+9}" if i < 10 else "100" for i in range(11)]
+
+    student_score = None
+    try:
+        student_score = float(subject_grade.exam1)
+    except ValueError:
+        pass
+
+    position = None
+    total_students = len(grade_numeric)
+    if student_score is not None and total_students > 0:
+        sorted_scores = sorted(grade_numeric, reverse=True)
+        position = sorted_scores.index(student_score) + 1 if student_score in sorted_scores else None
+
+    return render_template('subject.html',
+                           subject=subject_grade,
+                           student=student,
+                           school=school,
+                           subject_array=subject_info,
+                           class_mean=class_mean,
+                           highest_grade=highest_grade,
+                           lowest_grade=lowest_grade,
+                           range_labels=range_labels,
+                           range_counts=range_buckets,
+                           position=position,
+                           total_students=total_students)
+
+
+
+
 
 @app.route('/add_subject', methods=['POST'])
 def add_subject():
@@ -619,16 +844,13 @@ def add_subject():
         flash('Teacher not found. Please log in again.', 'error')
         return redirect(url_for('subjects'))
 
-    # If no grade is provided, fallback to the teacher's grade
     grade = grade if grade else teacher.grade
 
-    # Check if the subject already exists
     existing_subject = Subject.query.filter_by(name=name, grade=grade).first()
     if existing_subject:
         flash(f'Subject "{name}" already exists in grade {grade}.', 'error')
         return redirect(url_for('subjects'))
 
-    # Create new subject and associate with teacher
     new_subject = Subject(
         name=name,
         abr=abr,
@@ -637,21 +859,18 @@ def add_subject():
     )
 
     try:
-        # Add new subject to the database
         db.session.add(new_subject)
-        db.session.flush()  # Ensure the subject ID is available for the next operations
+        db.session.flush()  
 
-        # Create grade entries for all students in the same grade as the new subject
         students = Student.query.filter_by(grade=grade).all()
         for student in students:
             new_grade = Grade(
-                subject_id=new_subject.id,  # Use the subject ID for the relationship
+                subject_id=new_subject.id,  
                 teacher_id=teacher.id,
                 student_adm=student.adm
             )
             db.session.add(new_grade)
 
-        # Commit changes to the database
         db.session.commit()
 
         flash(f'Subject "{name}" added with grade entries for students.', 'success')
@@ -826,7 +1045,7 @@ def print_all_routes():
 
 @app.route('/print_routes')
 def show_routes():
-    print_all_routes()  # Print all routes to the console
+    print_all_routes() 
     return "Check your console for the list of routes."
 
 
@@ -844,7 +1063,20 @@ def staff_logout():
     flash('Logged out successfully', 'success')
     return redirect(url_for('staff_portal'))
 
+
+#Error Handlers
+@app.errorhandler(413)
+def handle_large_files(e):
+    print(app.config["MAX_CONTENT_LENGTH"]) 
+    return "Please upload something smaller", 413
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        teacher = Teacher.query.filter_by(is_admin=True).first()
+        if teacher:
+            print(teacher.name)
+            users[teacher.name] = teacher.password_hash
+        else:
+            print("No admin teacher found!")
     app.run(debug=True, host='0.0.0.0', port=7100)

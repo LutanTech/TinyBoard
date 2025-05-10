@@ -567,8 +567,14 @@
 .bg-dt{
 background: darkturquoise !important;
 }
+.bg-gr-dk{
+  background: #038326 !important;
+}
 .active-sc-098{
   &:active{
     scale: 0.98 !important;
   }
+}
+.pd-20{
+  padding: 20px !important;
 }

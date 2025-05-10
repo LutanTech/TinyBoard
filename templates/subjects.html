@@ -9,11 +9,10 @@
         {% if subjects %}
             {% for subject in subjects %}
             <div id="subject-card-{{ subject.id }}" class="bg-gradient-to-r from-green-200 via-white to-cyan-100 border border-gray-300 rounded-xl shadow-md p-6 w-64 text-center transition-opacity duration-500">
-                <h2 class="text-lg font-semibold text-gray-700">Subject ID: {{ subject.id }}</h2>
-                <p class="text-md text-gray-600 mt-1">Name: <span class="font-medium">{{ subject.abr }}</span></p>
-                <h2 class="text-md text-gray-600 mt-1">Grade: <span class="font-medium">{{ subject.grade }}</span></h2>
+                <span>Subject:  </span><span class="text-lg font-semibold text-black-700 cl-bl">{{ subject.abr }}</span><br>
+                <h2 class="text-md text-gray-600 mt-1">Form/Stream: <span class="font-medium">{{ subject.grade }}</span></h2>
                 <button type="button"
-                        class="mt-4 w-full py-2 px-4 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-300"
+                        class="mt-4 w-full py-2 px-4 rounded-full bg-green-500 text-white hover:bg-blue-600 transition-colors duration-300"
                         onclick="confirmDrop('{{ subject.id }}', '{{ teacher.id }}')"
                         aria-label="Drop subject {{ subject.abr }} with ID {{ subject.id }}">
                     Drop Subject
@@ -31,13 +30,14 @@
     <span id="trId" data-id="{{ teacher.id }}"></span>
 
     <form action="/add_subject" method="POST" class="bg-white border border-gray-200 rounded-xl shadow p-6 w-full max-w-md mx-auto space-y-4">
+        <h2  class="text-lg font-semibold text-gray-700 bd-b-1 txt-cn">Add New Subject</h2>
         <label for="name" class="block font-semibold text-gray-700">Enter Subject Name</label>
         <input type="text" name="name" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" aria-label="Enter subject name" />
 
         <label for="abr" class="block font-semibold text-gray-700">Enter Subject Abbreviation</label>
-        <input type="text" name="abr" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" aria-label="Enter subject abbreviation" />
+        <input type="text" name="abr" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" aria-label="Enter subject abbreviation" style="text-transform: uppercase;" />
 
-        <label for="grade" class="block font-semibold text-gray-700">Enter Grade</label>
+        <label for="grade" class="block font-semibold text-gray-700">Enter Form / Stream</label>
         <input type="text" name="grade" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" aria-label="Enter subject grade" />
 
         <button type="submit"

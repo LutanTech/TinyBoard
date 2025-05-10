@@ -73,7 +73,7 @@
                 <input type="email" name="email" value="{{ student.email }}" required>
             </div>
             <div class="col-6 mb-3">
-                <label><i class="fas fa-arrow-up"></i> Grade:</label>
+                <label><i class="fas fa-arrow-up"></i> Form:</label>
                 <input type="text" name="grade" value="{{ student.grade }}" required>
             </div>
             <div class="col-6 mb-3">
@@ -124,11 +124,11 @@
         <div class="row text-center">
             <div class="col-4">
                 <label><i class="fas fa-dollar-sign"></i> Billed</label><br>
-                <input type="number" name="billed" value="{{ student.billed }}" step="100">
+                <p>{{ student.billed }}</p>
             </div>
             <div class="col-4">
                 <label><i class="fas fa-coins"></i> Paid</label><br>
-                <input type="number" name="paid" value="{{ student.paid }}" step="100">
+                <p class="mt-2">{{ student.paid }}</p>
             </div>
             <div class="col-4">
                 <label><i class="fas fa-wallet"></i> Balance</label><br>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Transcript</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/imports/main.css">  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4faff;
+            padding: 40px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+            max-width: 700px;
+            margin: auto;
+            width: 90% !important;
+        }
+        h1, h3 {
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #ccc;
+        }
+        th {
+            background-color: #e0f0ff;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .details {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #555;
+        }
+        .details p {
+            margin: 4px 0;
+        }
+        .date{
+            display: none;
+        }
+            @media screen {
+        .date {
+            display: none;
+        }
+    }
+
+    @media print {
+        .date {
+            display: block;
+        }
+
+        body {
+            border: 1px dotted black;
+            outline: 1px solid grey;
+            background: white !important;
+            color: black;
+        }
+
+        .container {
+            box-shadow: none;
+        }
+
+        @page {
+            margin: 1cm;
+        }
+    }
+
+        .printBtn{
+            background: #00968c;
+            bottom: 50px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="printTranscript()" class="c-p active-sc-098 printBtn bd-0 pd-20 ps-fx bdr-50 "><i class="fas fa-print"></i></button>
+
+    <div class="container jst-cn flex aln-cn col">
+        <img src="{{ school.logo }}" alt="School Logo" class="logo bdr-10 mg-au flex jst-cn aln-cn" width="100px">
+        <p class="bldr f-s-xl mg-0">{{ school.name }}</p>
+            <p class="mg-5"><strong>Address:</strong> {{ school.address }}</p>
+            <p class="mg-0"><strong>Email:</strong> {{ school.email }}</p>
+            <p class="mg-5"><strong>Tel:</strong> {{ school.phone }}</p>
+            <hr class="w-100">
+ <div class="details mg-5">
+            <p class="bld  f-s-l w-100 txt-cn">Transcript - {{ student.name }}</p>
+            <p><strong>ADM:</strong> {{ student.adm }} | <strong>Grade:</strong> {{ student.grade }}</p>
+
+
+        <p class="date"><strong>Date Printed:</strong> {{ now.strftime('%B %d, %Y') }}</p>
+    </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Marks</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                {% set grade = grades_map[subject.id] %}
+                <tr>
+                    <td>{{ subject.name }}</td>             
+                    <td style="text-align: center;">{{ grade.total if grade else 'N/A' }}</td>
+                    <td style="text-align: center;">
+                        {% if grade %}
+                            {% if grade.total >= 86 %}
+                                A
+                            {% elif grade.total >= 80 %}
+                                A-
+                            {% elif grade.total >= 75 %}
+                                B+
+                            {% elif grade.total >= 70 %}
+                                B
+                            {% elif grade.total >= 65 %}
+                                B-
+                            {% elif grade.total >= 60 %}
+                                C+
+                            {% elif grade.total >= 55 %}
+                                C
+                            {% elif grade.total >= 50 %}
+                                C-
+                            {% elif grade.total >= 45 %}
+                                D+
+                            {% elif grade.total >= 40 %}
+                                D
+                            {% else %}
+                                E
+                            {% endif %}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            
+            </tbody>
+        </table>
+
+        <div class="footer">
+            Total Score: <span class="f-s-l cl-bl">{{ total_score }}</span><br>
+            Mean Score: <span class="f-s-l cl-bl">{{ mean_score }}</span>
+            <br>
+            Overall Grade: <span  class="f-s-l cl-bl">
+              {% if mean_score %}
+            {% if mean_score >= 86 %}
+                A
+            {% elif mean_score >= 80 %}
+                A-
+            {% elif mean_score >= 75 %}
+                B+
+            {% elif mean_score >= 70 %}
+                B
+            {% elif mean_score >= 65 %}
+                B-
+            {% elif mean_score >= 60 %}
+                C+
+            {% elif mean_score >= 55 %}
+                C
+            {% elif mean_score >= 50 %}
+                C-
+            {% elif mean_score >= 45 %}
+                D+
+            {% elif mean_score >= 40 %}
+                D
+            {% else %}
+                E
+            {% endif %}
+        {% else %}
+            N/A
+        {% endif %}
+    </span> 
+        </div>
+        
+        <hr class="w-100">
+<div class="left details flex col w-100 " style="justify-content: flex-start; align-items: flex-start;">
+        <p><strong>Class Teacher:</strong> {{ student.teacher }}</p>
+        <p><strong>Sign:</strong> {{ student.teacher }}</p></div>
+    </div>
+    <script>
+        function printTranscript() {
+
+            const content = document.querySelector('.container').outerHTML;
+        
+            const printWindow = window.open('', '', 'height=700,width=900');
+            const head = document.head.innerHTML;  
+        
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        ${head}
+                    </head>
+                    <body>
+                        ${content}
+                    </body>
+                </html>
+            `);
+        
+            printWindow.document.close();
+            printWindow.focus();
+        
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
+        }
+        </script>
+        
+        
+        
+</body>
+</html>

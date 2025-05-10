@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Subject Details{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="../static/css/imports/tailwind.css">
+<style>
+    .chartButton{
+        padding: 10px;
+        border-radius: 40px;
+        float: right;
+        background: bisque;
+        margin: 5px;
+        &:active{
+            scale: 0.98;
+
+        }
+        &:hover{
+            background: hotpink !important;
+        }
+    }
+</style>
+<div class="max-w-4xl mx-auto py-8 px-4 space-y-8 flex row wrap jst-cn al-cn gap-10">
+    <h1 class="text-3xl font-bold text-center text-blue-700">
+        Subject: {{ subject_array.name }} ({{ subject_array.abr }})
+    </h1>
+<div class="flex row wrap aln-cn grow w-90 pd-10 jst-cn aln-cn mg-au">
+    <div class="div mnw-300 grow bx-shd-005 pd-10 l-h-25 f-s-l flex col jst-cn aln-cn" style="min-height: 200px;">
+        <h2 class="text-lg font-semibold bd-b-1 bld text-blue-700 mb-3"> <i class="fas fa-user-graduate"></i> Student Info</h2>
+        <p><strong>Name:</strong> {{ student.name }}</p>
+        <p><strong>Adm No:</strong> {{ student.adm }}</p>
+        <p><strong>Your Grade:</strong> {{ subject.exam1 }}</p>
+        {% if position %}
+            <p><strong>Position:</strong> <span id="position" data-position="{{ position }}">{{ position }}</span> / <span id="total_students" data-total="{{ total_students }}">{{ total_students }}</span></p>
+        {% else %}
+            <p class="text-red-500">Position not available</p>
+        {% endif %}
+    </div>
+    <!-- Row 2: Class Stats -->
+     <div class="div mnw-300 ">
+    <div class="bg-blue-50 flex col jst-cn aln-cn f-s-l border border-blue-200 shadow-md rounded-xl p-6 w-full  mxw-500 " style="min-height: 200px;">
+        <h2 class="text-lg bd-b-1 font-semibold txt-cn bld text-blue-700 mb-3"> <i class="fas fa-users"></i> Subject Stats</h2>
+        <p><strong>Mean Grade:</strong> <span id="class_mean" data-mean="{{ class_mean }}">{{ class_mean }}</span></p>
+        <p><strong>Highest Grade:</strong> <span id="highest_grade" data-highest="{{ highest_grade }}">{{ highest_grade }}</span></p>
+        <p><strong>Lowest Grade:</strong> <span id="lowest_grade" data-lowest="{{ lowest_grade }}">{{ lowest_grade }}</span></p>
+    </div>
+</div>
+</div>
+    <!-- Row 3: Grade Chart -->
+    <div class="bg-white  mxw-500 shadow-md rounded-xl p-6 w-full">
+        <h2 class="text-lg font-semibold text-gray-700 mb-3">
+            <i class="fas fa-chart-line"></i> Grade Distribution
+        </h2>
+        
+        <button class="chartButton" onclick="changeType('line')">
+            <i class="fas fa-chart-line"></i> Line
+        </button>
+        
+        <button  class="chartButton"onclick="changeType('bar')">
+            <i class="fas fa-chart-bar"></i> Bar
+        </button>
+        
+        <button class="chartButton" onclick="changeType('pie')">
+            <i class="fas fa-chart-pie"></i> Pie
+        </button>
+        
+
+        <div class="w-full h-64  mxw-500" >
+            <canvas id="gradeChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let chartInstance;
+
+function changeType(type) {
+    // Check the current type and update accordingly
+    chartInstance.config.type = type; // Change chart type
+    chartInstance.update();  // Re-render chart with new type
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const rangeLabels = JSON.parse(document.getElementById('range_labels').getAttribute('data-labels'));
+    const rangeCounts = JSON.parse(document.getElementById('range_counts').getAttribute('data-counts'));
+
+    const ctx = document.getElementById('gradeChart').getContext('2d');
+
+    chartInstance = new Chart(ctx, {
+        type: 'bar',  // Initial chart type
+        data: {
+            labels: rangeLabels,
+            datasets: [{
+                label: 'Number of Students',
+                data: rangeCounts,
+                fill: true,
+                backgroundColor: 'rgba(147, 197, 253, 0.3)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<!-- Hidden spans for passing data -->
+<span id="range_labels" data-labels='{{ range_labels | tojson }}'></span>
+<span id="range_counts" data-counts='{{ range_counts | tojson }}'></span>
+
+{% endblock %}

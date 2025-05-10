@@ -3,7 +3,6 @@
 {% block content %}
 <link rel="stylesheet" href="../static/css/main/staff_dshb.css">
 
-<h2 class="f-s-m">Your Students</h2>
 <select id="filterType" class="input">
   <option value="">Filter Students</option>
   <option value="feeBalance">Fee Balance</option>
@@ -28,9 +27,7 @@
         <th>Name</th>
         <th>Adm No.</th>
         <th>Gender</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Balance</th>
+        <th>Fee Balance</th>
       </tr>
     </thead>
     <tbody>
@@ -40,8 +37,6 @@
         <td>{{ student.name }}</td>
         <td>{{ student.adm }}</td>
         <td style="text-transform: capitalize;">{{ student.st_gender }}</td>
-        <td class="f-s-xs">{{ student.email }}</td>
-        <td class="f-s-s">{{ student.phone1 }}</td>
         <td>
             {% if student.balance < 0 %}
                 <span style="color: red;">Ksh {{ "{:,}".format(student.balance) }}</span>
@@ -60,7 +55,7 @@
 </div>
 
 <!-- Filtered Students Modal -->
-<div class="uncleared none col jst-cn aln-cn w-100 h-100 bg-b-0 ps-abs t-0 r-0 l-0 b-0 mg-0" style="z-index: 1;">
+<div class="uncleared none col jst-cn aln-cn w-100 h-100 bg-b-0 ps-abs t-0 r-0 l-0 b-0 mg-0" style="z-index: 1000;">
   <div class="uncleared_results bg-w w-90 bdr-5 pd-10" id="uncleared_results"
     style="margin-left: 20px; max-width: 600px !important;">
     <span class="closeBtnSpan" onclick="toggleUncleared()">&times;</span>

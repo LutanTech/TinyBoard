@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../static/css/imports/main.css">  
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" preload>
     <link rel="stylesheet" href="../static/css/main/styles.css">
+    <link rel="stylesheet" href="../static/css/main/search.css">
     <script src="../static/js/main/main.js"></script>
     <script src="../static/js/imports/SweetAlert2.js"></script>
     <link href="../static/css/imports/tailwind.css" rel="stylesheet">   
@@ -19,7 +20,7 @@
             <span></span><span></span><span></span>
         </div>
         <div class="div flex col jst-cn aln-cn gap-10">
-            <img class="logo pd-10 bdr-50" src="{{ school.pic }}" >
+            <img class="logo pd-10 bdr-50" src="{{ school.logo }}" >
             <div class="name cl-w">{{ school.name }}</div>
         </div>
         <ul class="pc-ul flex col jst-cn grow gap-5">
@@ -48,10 +49,6 @@
             <li data-href="/exams">
                 <i class="fas fa-pen"></i>
                 <span class="tc none">Exams</span>
-            </li>
-            <li data-href="/attendance">
-                <i class="fas fa-clipboard-list"></i>
-                <span class="tc none">Attendance</span>
             </li>
             <li data-href="/profile?dest=notifications">
                 <i class="fas fa-bell"></i> 
@@ -93,21 +90,57 @@
     </div>
 
     <div class="content flex row wrap">
+        <div class="largeSearch w-100">
+        <div class="search" style="flex-grow: none;">
         <form id="search-form" onsubmit="return false;">
-            <input type="text" id="query" placeholder="Search students..." oninput="debouncedSearch()" />
+            <input type="text" id="query" placeholder="Search students..." oninput="debouncedSearch()" required/>
             <select id="filter_type">
-                <option value="">All</option>
+                <option value="">Filter</option>
                 <option value="grade">Grade</option>
-                <option value="adm">ADM No.</option>
+                <option value="adm">ADM.</option>
                 <option value="st_gender">Gender</option>
                 <option value="subjects">Subjects</option>
             </select>
-            <button onclick="searchStudents()">Search</button>
+            <button id="searchBtn" onclick="searchStudents()"><i class="fas fa-search"></i></button>
         </form>
+    </div>
+<script>
+    const query = document.getElementById('query');
+    var filterS = document.getElementById('filter_type')
+    const serchBtn = document.getElementById('searchBtn')
 
+    query.addEventListener('focusin', ()=>{
+        filterS.style.borderTop = '2px solid black'
+        query.style.borderTop = '2px solid black'
+        query.style.borderBottom = '2px solid black'
+        query.style.borderLeft= '2px solid black'
+        filterS.style.borderRight = '0px'
+        filterS.style.borderLeft = '0px'
+        filterS.style.borderBottom = '2px solid black'
+    })
+    query.addEventListener('focusout', ()=>{
+        filterS.style.borderTop = '1px solid black'
+        query.style.borderTop = '1px solid black'
+        query.style.borderBottom = '1px solid black'
+        query.style.borderLeft= '1px solid black'
+        filterS.style.borderRight = '0px'
+        filterS.style.borderLeft = '0px'
+        filterS.style.borderBottom = '1px solid black'
+    })
+    filterS.addEventListener('focusin', ()=>{
+        filterS.style.borderRight = '0px !important'
+        filterS.style.borderLeft = '0px !important'
+        query.style.borderRight = '0px'
+        query.style.borderTop = '2px solid'
+        query.style.borderLeft = '2px solid'
+        query.style.borderBottom = '2px solid'
+        filterS.style.borderBottom = '2px solid black'
+        filterS.style.borderTop = '2px solid black'
+    })
+</script>
         <!-- Results container -->
-        <div id="resultsDiv" class="w-100 pd-10"></div>
-
+        <div id="resultsDiv" class="w-90"></div>
+</div>
         {% block content %}
         {% endblock %}
     </div>
@@ -116,7 +149,7 @@
         function searchStudents() {
             const query = document.getElementById('query').value;
             const filterType = document.getElementById('filter_type').value;
-    
+            if(query){
             fetch(`/search?query=${encodeURIComponent(query)}&filter_type=${encodeURIComponent(filterType)}`, {
                 method: 'GET',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -124,9 +157,15 @@
             .then(response => response.json())
             .then(data => {
                 const resultsDiv = document.getElementById('resultsDiv');
+                const search = document.querySelector('.search')
+                resultsDiv.classList.add('active')
+                search.classList.add('active')
                 resultsDiv.innerHTML = '';
     
                 if (!data.students || data.students.length === 0) {
+                resultsDiv.classList.add('active')
+                search.classList.add('active')
+
                     resultsDiv.innerHTML = '<p class="tc">No students found.</p>';
                     return;
                 }
@@ -135,7 +174,8 @@
                 ul.classList.add('resultsLi');
                 data.students.forEach(student => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<strong>${student.name}</strong> (${student.grade}) - <a href="mailto:${student.email}">${student.email}</a>`;
+                    li.classList.add('flex')
+                    li.innerHTML = `<img class='smallPic' src='${student.pic}'> <strong>${student.name}</strong>  (F ${student.grade}) - ADM:  <b>${student.adm}</b> -- <i>${student.st_gender}</i>`;
                     li.onclick = () => {
                         window.location.href = `/student?id=${student.id}`;
                     };
@@ -145,15 +185,37 @@
             })
             .catch(error => {
                 console.error('Oops, something went wrong! ', error);
-                Swal.fire('Error', 'Failed to load results. Try again later.', 'error');
+                alrt('error', 'Failed to load results','Try again later.');
+                resultsDiv.innerHTML = 'An Error Occurred'
             });
         }
+
     
-        let debounceTimer;
+      }  let debounceTimer;
         function debouncedSearch() {
+            if(query && query != '' | query != ' '){
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(searchStudents, 300);
+        } else{
+            resultsDiv.innerHTML= 'Please type in something'
+
         }
+    }
+    function alrt(icon, message, text){
+        Swal.fire({
+                    icon: icon,
+                    title: message,
+                    text: text,
+                    toast: true,
+                    position: "top-end",
+                    showConfirmButton: false,
+                    timer: 3000
+        })
+    }
+    
+        // setTimeout(() => {
+        //     window.location.reload()
+        // }, 5000);
     </script>
 </body>
 </html>
