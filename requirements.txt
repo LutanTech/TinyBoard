@@ -1,0 +1,14 @@
+Flask
+Flask-SQLAlchemy
+Flask-WTF
+WTForms
+Flask-Login
+Werkzeug
+Flask-Migrate
+shortuuid
+requests
+Flask-Cors
+Flask-HTTPAuth
+Flask-JWT-Extended
+pyotp
+qrcode[pil]
