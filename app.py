@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField,SelectField
 from wtforms.validators import DataRequired, EqualTo
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -17,22 +17,30 @@ import string
 import secrets
 import base64
 import requests
-from flask_cors import CORS 
+from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth
 from functools import wraps
 from flask import request, Response
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from werkzeug.security import check_password_hash
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///main.db'
-app.config['SECRET_KEY'] = 'supersecretkey'
+app.config['SECRET_KEY'] = 'not_a_secret'
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
-print(app.url_map)
+app.config['JWT_SECRET_KEY'] = 'not_really_a_secret_key'
+
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'portal'
 migrate = Migrate(app, db)
+jwt = JWTManager(app)
+
+
 
 CORS(app)
+
 
 def generate_rand_id(length=6):
     characters = string.ascii_letters + string.digits
@@ -78,6 +86,7 @@ class Teacher(UserMixin, db.Model):
     phone2 = db.Column(db.String(500), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
+    twofa_secret = db.Column(db.String(32), nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -142,7 +151,7 @@ class Grade(db.Model):
     @hybrid_property
     def total(self):
         return (self.exam1 or 0) + (self.exam2 or 0)
-    
+
 class Transcript(db.Model):
     id = db.Column(db.String, primary_key=True,  unique=True, default=generate_rand_id)
     student_id = db.Column(db.String(500), nullable=False)
@@ -157,19 +166,135 @@ class Subject(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
     grade = db.Column(db.String, db.ForeignKey('teacher.grade'))
 
-from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField
-from wtforms.validators import DataRequired
+
 
 class SearchForm(FlaskForm):
     query = StringField('Search', validators=[DataRequired()])
     filter_type = SelectField('Filter By', choices=[
         ('', 'Select Filter'),
-        ('adm', 'ADM No.'),  
+        ('adm', 'ADM No.'),
         ('grade', 'Grade'),
         ('st_gender', 'Gender'),
         ('name', 'Name'),
     ])
+
+import pyotp
+import qrcode
+from io import BytesIO
+
+
+def generate_2fa_secret():
+    raw_secret = pyotp.random_base32()
+    return base64.b64encode(raw_secret.encode()).decode()
+
+def get_totp(secret_b64):
+    raw_secret = base64.b64decode(secret_b64).decode()
+    return pyotp.TOTP(raw_secret)
+
+@app.route('/generate_qr/<user_id>')
+def generate_qr(user_id):
+    user = Teacher.query.get(user_id)
+    if not user or not user.twofa_secret:
+        return jsonify({'message': 'User not found or 2FA not set up'}), 404
+
+    totp = get_totp(user.twofa_secret)
+    uri = totp.provisioning_uri(name=user.name, issuer_name="LutanTech Cashier")
+
+    img = qrcode.make(uri)
+    buf = BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png')
+
+@app.route('/cashier_login', methods=['POST'])
+def cashier_login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    otp = data.get('otp')
+
+    print("Received OTP:", otp if otp else 'No Otp')
+
+    user = Teacher.query.filter_by(name=username).first()
+
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"message": "Invalid credentials"}), 401
+
+    if not user.twofa_secret:
+        return jsonify({"message": "2FA not set up"}), 403
+
+    decoded_secret = base64.b64decode(user.twofa_secret).decode()
+    totp = pyotp.TOTP(decoded_secret)
+
+    if not totp.verify(otp, valid_window=1):
+        return jsonify({"message": "Invalid 2FA code"}), 403
+
+    access_token = create_access_token(identity=user.id)
+
+    return jsonify({
+        "message": "Login successful",
+        "user": user.name,
+        "access_token": access_token
+    }), 200
+
+@app.route('/cashier', methods=['POST'])
+@jwt_required()
+def cashier():
+    user_id = get_jwt_identity()
+    print(f"User ID from token: {user_id}")
+
+    school = School.query.first()
+    students = Student.query.all()
+
+    return jsonify({
+        "school": school.to_dict() if school else {},
+        "students": [{
+            'id': s.id,
+            'name': s.name,
+            'adm': s.adm,
+            'grade': s.grade,
+            "billed": s.billed,
+            "paid": s.paid,
+            "balance": s.balance
+        } for s in students]
+    })
+
+
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+@app.route('/update_finances', methods=['POST'])
+@jwt_required()
+def update_finances():
+    user_id = get_jwt_identity()
+    print(f"Authenticated user ID: {user_id}")
+
+    data = request.get_json()
+    adm = data.get('adm')
+
+    student = Student.query.filter_by(adm=adm).first()
+    if not student:
+        return jsonify({'message': 'Student not found'}), 404
+
+    try:
+        student.billed = int(data.get('billed', student.billed))
+        student.paid = int(data.get('paid', student.paid))
+        student.balance = student.billed - student.paid
+        db.session.commit()
+
+        return jsonify({'message': 'Student finance updated successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error updating finances: {str(e)}'}), 500
+
+
+def generate_TFA():
+    user = Teacher.query.get(1000)
+    if user:
+        user.twofa_secret = generate_2fa_secret()  # Generates a secret
+        db.session.commit()
+        print(f"2FA secret set: {user.twofa_secret}")
+    print('no user')
+
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -245,67 +370,6 @@ def index():
 
 
 
-auth = HTTPBasicAuth()
-users = {}  
-
-def login_require(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not verify_credentials(auth.username, auth.password):
-            return Response(
-                'Unauthorized Access.\nPlease provide valid credentials.', 401,
-                {'WWW-Authenticate': 'Basic realm="Login Required"'}
-            )
-        return f(*args, **kwargs)
-    return decorated
-
-def verify_credentials(username, password):
-    if username in users and check_password_hash(users[username], password):
-        return True
-    return False
-
-@app.route('/cashier', methods=['POST'])
-@login_require
-def cashier():
-    # use your real models here
-    school = School.query.first()
-    students = Student.query.all()
-    
-    return jsonify({
-        "school": school.to_dict() if school else {},
-        "students": [{
-            'id': s.id,
-            'name': s.name,
-            'adm': s.adm,
-            'grade': s.grade,
-            "billed": s.billed,
-            "paid": s.paid,
-            "balance": s.balance
-        } for s in students]
-    })
-
-@app.route('/update_finances', methods=['POST'])
-@login_require
-def update_finances():
-    adm = request.args.get('adm')
-    student = Student.query.filter_by(adm=adm).first()
-
-    if not student:
-        flash('Student not found.', 'danger')
-        return redirect(url_for('staff_dashboard'))
-
-    try:
-        student.billed = int(request.form['billed'])
-        student.paid = int(request.form['paid'])
-        student.balance = student.billed - student.paid
-        db.session.commit()
-        flash('Student finance status updated successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error updating finances: {e}', 'danger')
-
-    return jsonify('success')
 
 @app.route('/profile')
 def profile():
@@ -344,7 +408,7 @@ def staff_dashboard():
     school = School.query.first()
 
     teacher = Teacher.query.get(session.get('staff_id'))
-    
+
     if not teacher:
         flash("Teacher not found in session!", "danger")
         return redirect(url_for('staff_logout'))
@@ -378,7 +442,7 @@ def students():
 
     if not teacher:
         flash("Teacher not found. Are you logged in properly?", "error")
-        return redirect(url_for('staff_portal'))  
+        return redirect(url_for('staff_portal'))
 
     students = Student.query.filter_by(grade=teacher.grade).all()
     if request.method == 'POST':
@@ -388,12 +452,12 @@ def students():
         "phone": s.phone1,
         "email": s.email,
         "balance": s.balance,
-        "adm": s.adm, 
+        "adm": s.adm,
         "gender" : s.st_gender
 
         } for s in students]
         return jsonify({'students' : data})
-    
+
     return render_template(
             "students.html",
             teacher=teacher,
@@ -405,7 +469,7 @@ def students():
 def areasi():
     uncleared = Student.query.filter(
         Student.grade == current_user.grade,
-        Student.billed - Student.paid > 0  
+        Student.billed - Student.paid > 0
     ).all()
 
     data = [{
@@ -439,7 +503,7 @@ def student():
 def areas():
     uncleared = Student.query.filter(
         Student.grade == current_user.grade,
-        Student.billed - Student.paid > 0  
+        Student.billed - Student.paid > 0
     ).all()
 
     data = [{
@@ -476,7 +540,7 @@ def update_student():
     student.phone3 = request.form.get('phone3', None)
 
     db.session.commit()
-    
+
     flash('Student information updated successfully! ', 'success')
     return redirect(url_for('students'))
 
@@ -519,14 +583,14 @@ def staff_portal():
 @app.route('/add_school', methods=['POST'])
 def add_school():
     data = request.form
-    
+
     school = School(
         name=data['name'],
         abr=data['abr'],
         admin_id = current_user.id,
         logo=data['pic'],
         address=data['address'],
-        phone=data['phone'], 
+        phone=data['phone'],
         email=data['email']
 
 
@@ -591,7 +655,7 @@ def exams():
     subjects = Subject.query.filter_by(grade=teacher.grade).all()
 
     grades_map = {}
-    student_totals = {}  
+    student_totals = {}
     for student in students:
         grades_map[student.adm] = {}
         total = 0
@@ -599,9 +663,9 @@ def exams():
             grade = Grade.query.filter_by(student_adm=student.adm, subject_id=subject.id).first()
             grades_map[student.adm][subject.id] = grade
             if grade:
-                total += grade.total  
-        
-        student_totals[student.adm] = total 
+                total += grade.total
+
+        student_totals[student.adm] = total
 
     return render_template(
         'exams.html',
@@ -610,7 +674,7 @@ def exams():
         subjects=subjects,
         school=school,
         grades_map=grades_map,
-        student_totals=student_totals  
+        student_totals=student_totals
     )
 from flask_login import login_required, current_user
 from datetime import datetime
@@ -623,7 +687,7 @@ def transcript():
 
     if not student:
         flash("Student not found!", "error")
-        return redirect(url_for('student_portal'))  
+        return redirect(url_for('student_portal'))
 
     subjects = Subject.query.filter_by(grade=student.grade).all()
 
@@ -711,7 +775,7 @@ def subjects():
     id2 = session.get('student_id')
     if id and request.method == 'GET':
         teacher = Teacher.query.get(session.get('staff_id'))
-        students = Student.query.filter_by(grade=teacher.grade).all()  
+        students = Student.query.filter_by(grade=teacher.grade).all()
         subjects = Subject.query.filter_by(teacher_id=id).all()
         subject_list = [{"id": subject.id, "abr": subject.abr, 'grade' : subject.grade} for subject in subjects]
 
@@ -719,7 +783,7 @@ def subjects():
             "subjects.html",
             teacher=teacher,
             students=students,
-            subjects=subject_list, 
+            subjects=subject_list,
             school=school
         )
     if id2:
@@ -860,12 +924,12 @@ def add_subject():
 
     try:
         db.session.add(new_subject)
-        db.session.flush()  
+        db.session.flush()
 
         students = Student.query.filter_by(grade=grade).all()
         for student in students:
             new_grade = Grade(
-                subject_id=new_subject.id,  
+                subject_id=new_subject.id,
                 teacher_id=teacher.id,
                 student_adm=student.adm
             )
@@ -962,7 +1026,7 @@ def send_bulk_whatsapp():
 
     for student in students:
         if not student.phone1:
-            continue  
+            continue
 
         message = f"Hi {student.name}, your balance is Ksh {student.balance:,}. Please clear it at your earliest convenience. - Lutan Tech "
 
@@ -984,7 +1048,7 @@ def send_bulk_whatsapp():
     else:
         flash(f"Successfully sent WhatsApp messages to {len(students)} students!", "success")
 
-    return redirect(url_for('students')) 
+    return redirect(url_for('students'))
 
 @app.route('/add_teacher', methods=['GET', 'POST'])
 @login_required
@@ -1045,7 +1109,7 @@ def print_all_routes():
 
 @app.route('/print_routes')
 def show_routes():
-    print_all_routes() 
+    print_all_routes()
     return "Check your console for the list of routes."
 
 
@@ -1067,16 +1131,12 @@ def staff_logout():
 #Error Handlers
 @app.errorhandler(413)
 def handle_large_files(e):
-    print(app.config["MAX_CONTENT_LENGTH"]) 
+    print(app.config["MAX_CONTENT_LENGTH"])
     return "Please upload something smaller", 413
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        teacher = Teacher.query.filter_by(is_admin=True).first()
-        if teacher:
-            print(teacher.name)
-            users[teacher.name] = teacher.password_hash
-        else:
-            print("No admin teacher found!")
-    app.run(debug=True, host='0.0.0.0', port=7100)
+    print("Go Filter the Kids Lutan!. TinyBoard is running")
+    app.run(debug=True, post=7100, host='0.0.0.0')
+
