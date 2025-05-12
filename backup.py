@@ -77,7 +77,7 @@ def send_email(subject, body):
 
 
 # 📆 Schedule at midnight
-schedule.every().day.at("22:04").do(upload_to_gdrive)
+schedule.every().day.at("00:00").do(upload_to_gdrive)
 
 if __name__ == "__main__":
     print("📅 Backup scheduler started... waiting for midnight...")
