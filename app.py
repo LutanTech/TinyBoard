@@ -23,7 +23,9 @@ from functools import wraps
 from flask import request, Response
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash
-
+from io import BytesIO
+import json
+import hashlib
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///main.db'
@@ -36,6 +38,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'portal'
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
+
 
 
 
@@ -136,6 +139,8 @@ class Notification(db.Model):
     sender = db.Column(db.String(500), nullable=False)
     grade = db.Column(db.String(100), nullable=False)
     date = db.Column(db.String(100), nullable=False)
+    pdf = db.Column(db.Text, nullable=True)
+
 
 class Grade(db.Model):
     __tablename__ = 'grade'
@@ -156,6 +161,7 @@ class Transcript(db.Model):
     id = db.Column(db.String, primary_key=True,  unique=True, default=generate_rand_id)
     student_id = db.Column(db.String(500), nullable=False)
     hash = db.Column(db.String(500), nullable=False)
+    grades_json = db.Column(db.JSON, nullable=False) 
 
 
 class Subject(db.Model):
@@ -620,7 +626,7 @@ def add_student():
             adm=data['adm'],
             email=data['email'],
             st_gender=data['st_gender'],
-            grade=data['grade'] or teacher.grade,
+            grade=data['grade'],
             g_name=data['g_name'],
             g_type=data['g_type'],
             g_gender=data['g_gender'],
@@ -676,7 +682,7 @@ def exams():
         grades_map=grades_map,
         student_totals=student_totals
     )
-from flask_login import login_required, current_user
+
 from datetime import datetime
 
 @app.route('/transcript')
@@ -693,30 +699,71 @@ def transcript():
 
     grades_map = {}
     total = 0
-
-
+    grades = []
 
     for subject in subjects:
         grade = Grade.query.filter_by(student_adm=student.adm, subject_id=subject.id).first()
         grades_map[subject.id] = grade
         if grade:
+            grades.append({
+                'subject': subject.name,
+                'marks': grade.total
+            })
             total += grade.total
 
-    total_score = sum(g.total for g in grades_map.values() if g)
+    total_score = total
     subject_count = len(subjects)
     mean_score = round(total_score / subject_count, 4) if subject_count > 0 else 0
+
+    teacher = Teacher.query.filter_by(grade=student.grade).first()
+
+    grades_json = json.dumps(grades)
+    transcript_hash = hashlib.sha256((str(student.id) + str(total_score)).encode()).hexdigest()
+
+
+    transcript = Transcript(
+        student_id=student.id,
+        grades_json=grades_json,
+        hash=transcript_hash
+    )
+    db.session.add(transcript)
+    db.session.commit()
+
+    qr_url = url_for('view_transcript', transcript_id=transcript.id, _external=True)
+    qr_img = qrcode.make(qr_url)
+    buffered = BytesIO()
+    qr_img.save(buffered, format="PNG")
+    qr_data = base64.b64encode(buffered.getvalue()).decode()
 
     return render_template(
         'transcript.html',
         student=student,
+        teacher=teacher,
         subjects=subjects,
         grades_map=grades_map,
         school=school,
         now=datetime.now(),
         mean_score=mean_score,
-        total_score=total
+        total_score=total_score,
+        qr_data=qr_data
     )
 
+@app.route('/transcript/<transcript_id>')
+def view_transcript(transcript_id):
+    transcript = Transcript.query.get_or_404(transcript_id)
+    student = Student.query.get(transcript.student_id)
+    grades = json.loads(transcript.grades_json)
+
+    return render_template(
+        'transcript_view.html',
+        student=student,
+        grades=grades,
+        transcript=transcript
+    )
+
+@app.route('/scan')
+def scan():
+    return render_template('scan_qr.html')
 
 @app.route('/update_grade', methods=['POST'])
 def update_grade():
@@ -1080,8 +1127,9 @@ def add_notification():
     priority = request.form.get('priority')
     content= request.form.get('content')
     date= request.form.get('date')
-    if request.method == 'POST':
-        new_notif = Notification(name=title, priority=priority, content=content, sender=teacher.name, grade=teacher.grade, date=date)
+    pdf= request.form.get('pdf')
+    if request.method == 'POST' and content or pdf:
+        new_notif = Notification(name=title, priority=priority, content=content, sender=teacher.name, grade=teacher.grade, date=date, pdf=pdf if pdf else None)
         try:
             db.session.add(new_notif)
             db.session.commit()
@@ -1134,9 +1182,28 @@ def handle_large_files(e):
     print(app.config["MAX_CONTENT_LENGTH"])
     return "Please upload something smaller", 413
 
+
+#backup
+import os
+import schedule
+import time
+from datetime import datetime
+import threading
+from backup import  schedule
+
+def run_backup_scheduler():
+    print('backup thread running...')
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+
+# Run scheduler in background thread
+threading.Thread(target=run_backup_scheduler, daemon=True).start()
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     print("Go Filter the Kids Lutan!. TinyBoard is running")
-    app.run(debug=True, post=7100, host='0.0.0.0')
+    app.run(debug=True, port=7100, host='0.0.0.0')
 

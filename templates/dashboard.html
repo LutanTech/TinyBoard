@@ -55,7 +55,8 @@
           {% for notif in notifs %}
           <div class="notification _{{notif.priority}}">
             <p class="notif-title">{{notif.name}}</p>
-            <p class="notif-content">{{notif.content}}</p>
+            {% if notif.content and  not notif.pdf %}<p class="notif-content">{{notif.content}}</p> {% elif notif.pdf and  not notif.content %}<a href="{{notif.pdf}}" target="_blank" download="">Download</a>{% elif notif.content and notif.pdf %}<p class="notif-content">{{notif.content}}</p><a href="{{notif.pdf}}" target="_blank" download="">Download</a> {% endif %}
+            
             <p class="notif-date">{{notif.date }}</p>
             <p class="notif-regards">By {{ notif.sender }}</p>
         </div>

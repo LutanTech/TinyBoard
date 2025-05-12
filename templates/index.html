@@ -11,6 +11,8 @@
       <script src="../static/js/main/main.js"></script>
       <script src="../static/js/imports/SweetAlert2.js" defer></script>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+      <link rel="shortcut icon" href="https://i.ibb.co/TqBptXTP/image-removebg-preview.png" type='image/png'>
+
        <style>
         html, body{
             font-family: Arial, Helvetica, sans-serif;
@@ -44,9 +46,25 @@
                 scale: 0.98;
             }
 }
+.cover-vid {
+  object-fit: cover;
+  position: absolute;
+  z-index: -1; /* Push behind other content */
+  width: 100% !important;
+}
+
        </style>
 </head>
-<body class="ovf-y-h h-100 pd-0" style="background-image: url(../static/images/login-backg.webp); background-blend-mode: multiply; background-color: rgb(150, 249, 247); margin: 2px;">
+<body class="ovf-y-h h-100 pd-0" style="background-image: url(../static/images/login-backg.webp); background-blend-mode: multiply; background-color: rgba(145, 255, 0, 0.403); margin: 2px;">
+    <video 
+    src="../static/videos/backgvid.mp4" 
+    autoplay 
+    loop 
+    muted 
+    playsinline 
+    class="cover-vid ps-fx t-0 r-0 l-0 b-0 w-v100 h-v100" 
+    preload="none">
+  </video>
     <div class="container w-100 h-v100 flex col jst-cn aln-cn pd-0 mg-0">
 
     <div class="header flex row n-wrap w-100 pd-10 ps-fx t-0 r-0 l-0">

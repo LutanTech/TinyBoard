@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        #reader {
+            width: 300px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #result {
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        #scanned-data {
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+            border-radius: 8px;
+        }
+        #errorDiv {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Scan Ticket</h1>
+    <div id="errorDiv" style="display: none;"></div>
+
+    <button id="start-btn">Start Scanning</button>
+    <button id="stop-btn" disabled>Stop Scanning</button>
+    
+    <div id="reader"></div>
+    <p><strong>Scanned Result:</strong> <span id="result"></span></p>
+
+    <div id="scanned-data">
+        <h3>Ticket Details:</h3>
+        <p><strong>Event Name:</strong> <span id="event-name"></span></p>
+        <p><strong>User:</strong> <span id="username"></span></p>
+        <p><strong>Ticket Class:</strong> <span id="ticket-class"></span></p>
+        <p><strong>Amount Paid:</strong> <span id="amount-paid"></span></p>
+    </div>
+
+    <input type="file" id="file-input" accept="image/*">
+
+    <script>
+        window.onload = function () {
+            const errorDiv = document.getElementById('errorDiv');
+            errorDiv.style.display = 'none';
+            let scanner = new Html5Qrcode("reader");
+            let isScanning = false;
+
+            function onScanError(errorMessage) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = `Error: ${errorMessage}`;
+            }
+
+            function startScanning() {
+                if (!isScanning) {
+                    errorDiv.style.display = 'none';
+                    console.log(" Starting scanner...");
+                    scanner.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: 250 },
+                        onScanSuccess, 
+                        onScanError
+                    ).then(() => {
+                        isScanning = true;
+                        errorDiv.style.display = 'none';
+                        document.getElementById("start-btn").disabled = true;
+                        document.getElementById("stop-btn").disabled = false;
+                    })
+                    .catch(err => {
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerText = 'Error Starting Scanner...';
+                    });
+                }
+            }
+
+            function stopScanning() {
+                if (isScanning) {
+                    scanner.stop().then(() => {
+                        isScanning = false;
+                        document.getElementById("start-btn").disabled = false;
+                        document.getElementById("stop-btn").disabled = true;
+                    })
+                    .catch(err => {
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerText = 'Stopping Scanner...';
+                    });
+                }
+            }
+
+            document.getElementById("start-btn").addEventListener("click", startScanning);
+            document.getElementById("stop-btn").addEventListener("click", stopScanning);
+
+            document.getElementById("file-input").addEventListener("change", function (event) {
+                if (event.target.files.length === 0) {
+                    return;
+                }
+                const imageFile = event.target.files[0];
+                scanner.scanFile(imageFile, true)
+                    .then(decodedText => {
+                        updateUI(decodedText);
+                        sendToBackend(decodedText);
+                    })
+                    .catch(err => {
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerText = 'Error Scanning Image...';
+                    });
+            });
+
+            function onScanSuccess(decodedText) {
+                errorDiv.style.display = 'none';
+                updateUI(decodedText);
+                sendToBackend(decodedText);
+            }
+
+            function updateUI(decodedText) {
+                const result = JSON.parse(decodedText);
+                document.getElementById("result").innerText = "Ticket Scanned!";
+                document.getElementById("event-name").innerText = result.event_name;
+                document.getElementById("username").innerText = result.username;
+                document.getElementById("ticket-class").innerText = result.ticket_class;
+                document.getElementById("amount-paid").innerText = `KSh ${result.amount}`;
+            }
+
+            function sendToBackend(qrData) {
+                try {
+                    const parsedData = JSON.parse(qrData); 
+                    fetch('/validate-qr', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(parsedData) 
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.valid) {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Ticket Valid!",
+                                text: `Event: ${parsedData.event_name}\n User: ${parsedData.username}\n Ticket Class: ${parsedData.ticket_class}\n Amount Paid: ${parsedData.amount}`
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: "error",
+                                title: "❌ Invalid Ticket",
+                                text: data.error
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerText = 'Error Validating Details!';
+                        console.error("❌ Backend error:", error);
+                        Swal.fire({
+                            icon: "error",
+                            title: "❌ Server Error",
+                            text: error.message
+                        });
+                    });
+                } catch (err) {
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerText = 'Data Parsing Error!';
+                    console.error("❌ QR Data Parsing Error:", err);
+                    Swal.fire({
+                        icon: "error",
+                        title: "❌ Invalid QR Code",
+                        text: "The scanned QR code is not in the correct format."
+                    });
+                }
+            }
+        };
+    </script>
+
+</body>
+</html>

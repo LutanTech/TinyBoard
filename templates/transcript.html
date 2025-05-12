@@ -6,12 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../static/css/imports/main.css">  
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="shortcut icon" href="https://i.ibb.co/TqBptXTP/image-removebg-preview.png" type='image/png'> 
 
     <style>
         body {
             font-family: Arial, sans-serif;
             background: #f4faff;
             padding: 40px;
+            scale: 0.99;
         }
         .container {
             background: white;
@@ -21,6 +23,7 @@
             max-width: 700px;
             margin: auto;
             width: 90% !important;
+            position: relative; /* For QR positioning */
         }
         h1, h3 {
             text-align: center;
@@ -50,179 +53,202 @@
         .details p {
             margin: 4px 0;
         }
-        .date{
-            display: none;
-        }
-            @media screen {
-        .date {
-            display: none;
-        }
-    }
 
-    @media print {
-        .date {
-            display: block;
+        /* QR Code Styles */
+        .qr-code {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
         }
-
-        body {
-            border: 1px dotted black;
-            outline: 1px solid grey;
-            background: white !important;
-            color: black;
-        }
-
-        .container {
-            box-shadow: none;
-        }
-
-        @page {
-            margin: 1cm;
-        }
-    }
-
         .printBtn{
-            background: #00968c;
-            bottom: 50px;
+            position: fixed;
+            bottom: 20px;
             right: 10px;
+            border-radius: 50%;
+            height: 50px;
+            aspect-ratio: 1;
+            border: 2px solid white;
+            outline: 1px solid black;
+            background: #00eeff;
+            box-shadow: 0px 0px 10px rgba(128, 128, 128, 0.348);
+            cursor: pointer;
+            &:hover{
+                background: darkturquoise;
+            }
+            &:active{
+                scale: 0.98;
+            }
+        }
+        @media screen {
+            .date {
+                display: none;
+            }
+        }
+
+        @media print {
+            .date {
+                display: block;
+            }
+.qr-code{
+    bottom: -20px !important;
+}
+            body {
+                background: white !important;
+                color: black;
+                margin: 0;
+                padding: 0;
+                scale: 0.95; /* Tweak if content overflows */
+            }
+
+            .container {
+                box-shadow: none;
+                width: 100% !important;
+                max-width: 100%;
+                padding: 10px;
+                page-break-inside: avoid;
+            }
+
+            table, tr, td, th {
+                page-break-inside: avoid;
+            }
+
+            .footer, .details {
+                page-break-inside: avoid;
+            }
+
+            @page {
+                margin: 0.5cm;
+                size: A4 portrait;
+            }
         }
     </style>
 </head>
 <body>
-    <button onclick="printTranscript()" class="c-p active-sc-098 printBtn bd-0 pd-20 ps-fx bdr-50 "><i class="fas fa-print"></i></button>
+    <button onclick="printTranscript()" class="printBtn">
+        <i class="fas fa-print"></i> Print
+    </button>
 
-    <div class="container jst-cn flex aln-cn col">
-        <img src="{{ school.logo }}" alt="School Logo" class="logo bdr-10 mg-au flex jst-cn aln-cn" width="100px">
-        <p class="bldr f-s-xl mg-0">{{ school.name }}</p>
-            <p class="mg-5"><strong>Address:</strong> {{ school.address }}</p>
-            <p class="mg-0"><strong>Email:</strong> {{ school.email }}</p>
-            <p class="mg-5"><strong>Tel:</strong> {{ school.phone }}</p>
-            <hr class="w-100">
- <div class="details mg-5">
-            <p class="bld  f-s-l w-100 txt-cn">Transcript - {{ student.name }}</p>
-            <p><strong>ADM:</strong> {{ student.adm }} | <strong>Grade:</strong> {{ student.grade }}</p>
+    <button onclick="window.history.back()" class="backBtn">
+        <i class="fas fa-arrow-left"></i> Back
+    </button>
 
-
-        <p class="date"><strong>Date Printed:</strong> {{ now.strftime('%B %d, %Y') }}</p>
+    <div class="container txt-cn ">
+        <div class="schoolDet" style="line-height: 15px !important;">
+        <img src="{{ school.logo }}" alt="School Logo" class="logo" width="100px">
+        <p class="f-s-xl">{{ school.name }}</p>
+        <p><strong>Address:</strong> {{ school.address }}</p>
+        <p><strong>Email:</strong> {{ school.email }}</p>
+        <p><strong>Tel:</strong> {{ school.phone }}</p>
     </div>
-        <table>
+        <hr>
+
+        <div class="details">
+            <p><strong>Transcript - {{ student.name }}</strong></p>
+            <p><strong>ADM:</strong> {{ student.adm }} | <strong>Form:</strong> {{ student.grade }}</p>
+            <p class="date"><strong>Date Printed:</strong> {{ now.strftime('%B %d, %Y') }}</p>
+        </div>
+
+        <table >
             <thead>
                 <tr>
                     <th>Subject</th>
                     <th>Marks</th>
                     <th>Grade</th>
+                    <th>Remarks</th>
+                    
                 </tr>
             </thead>
             <tbody>
                 {% for subject in subjects %}
                 {% set grade = grades_map[subject.id] %}
                 <tr>
-                    <td>{{ subject.name }}</td>             
-                    <td style="text-align: center;">{{ grade.total if grade else 'N/A' }}</td>
-                    <td style="text-align: center;">
+                    <td style="text-align: left !important;">{{ subject.name }}</td>             
+                    <td>{{ grade.total if grade else 'N/A' }}</td>
+                    <td>
                         {% if grade %}
-                            {% if grade.total >= 86 %}
-                                A
-                            {% elif grade.total >= 80 %}
-                                A-
-                            {% elif grade.total >= 75 %}
-                                B+
-                            {% elif grade.total >= 70 %}
-                                B
-                            {% elif grade.total >= 65 %}
-                                B-
-                            {% elif grade.total >= 60 %}
-                                C+
-                            {% elif grade.total >= 55 %}
-                                C
-                            {% elif grade.total >= 50 %}
-                                C-
-                            {% elif grade.total >= 45 %}
-                                D+
-                            {% elif grade.total >= 40 %}
-                                D
-                            {% else %}
-                                E
-                            {% endif %}
-                        {% else %}
-                            N/A
-                        {% endif %}
+                            {% if grade.total >= 86 %} A
+                            {% elif grade.total >= 80 %} A-
+                            {% elif grade.total >= 75 %} B+
+                            {% elif grade.total >= 70 %} B
+                            {% elif grade.total >= 65 %} B-
+                            {% elif grade.total >= 60 %} C+
+                            {% elif grade.total >= 55 %} C
+                            {% elif grade.total >= 50 %} C-
+                            {% elif grade.total >= 45 %} D+
+                            {% elif grade.total >= 40 %} D
+                            {% else %} E {% endif %}
+                        {% else %} N/A {% endif %}
                     </td>
+                    <td class="f-s-s">
+                        {% if grade %}
+                            {% if grade.total >= 86 %} Excellent
+                            {% elif grade.total >= 75 %} Very Good
+                            {% elif grade.total >= 60 %} Good
+                            {% elif grade.total >= 50 %} Average
+                            {% elif grade.total >= 40 %} Below Average
+                            {% else %} Poor {% endif %}
+                        {% else %} N/A {% endif %}
+                    </td>
+                    
                 </tr>
-            {% endfor %}
-            
+                {% endfor %}
             </tbody>
         </table>
 
-        <div class="footer">
-            Total Score: <span class="f-s-l cl-bl">{{ total_score }}</span><br>
-            Mean Score: <span class="f-s-l cl-bl">{{ mean_score }}</span>
-            <br>
-            Overall Grade: <span  class="f-s-l cl-bl">
-              {% if mean_score %}
-            {% if mean_score >= 86 %}
-                A
-            {% elif mean_score >= 80 %}
-                A-
-            {% elif mean_score >= 75 %}
-                B+
-            {% elif mean_score >= 70 %}
-                B
-            {% elif mean_score >= 65 %}
-                B-
-            {% elif mean_score >= 60 %}
-                C+
-            {% elif mean_score >= 55 %}
-                C
-            {% elif mean_score >= 50 %}
-                C-
-            {% elif mean_score >= 45 %}
-                D+
-            {% elif mean_score >= 40 %}
-                D
-            {% else %}
-                E
-            {% endif %}
-        {% else %}
-            N/A
-        {% endif %}
-    </span> 
+        <div class="footer mg-5 flex n-wrap gap-10" style="justify-content: space-between;">
+           <b> Total Score: <span class="cl-b">{{ total_score }}</span> </b><br>
+           <b> Mean Score: <span class="cl-b">{{ mean_score }}</span> </b><br>
+           <b> Overall Grade: 
+            {% if mean_score %}
+                {% if mean_score >= 86 %} A
+                {% elif mean_score >= 80 %} A-
+                {% elif mean_score >= 75 %} B+
+                {% elif mean_score >= 70 %} B
+                {% elif mean_score >= 65 %} B-
+                {% elif mean_score >= 60 %} C+
+                {% elif mean_score >= 55 %} C
+                {% elif mean_score >= 50 %} C-
+                {% elif mean_score >= 45 %} D+
+                {% elif mean_score >= 40 %} D
+                {% else %} E {% endif %}
+            {% else %} N/A {% endif %}
+            </b>
         </div>
-        
-        <hr class="w-100">
-<div class="left details flex col w-100 " style="justify-content: flex-start; align-items: flex-start;">
-        <p><strong>Class Teacher:</strong> {{ student.teacher }}</p>
-        <p><strong>Sign:</strong> {{ student.teacher }}</p></div>
+
+        <hr>
+
+        <div class="left details" style="text-align: left !important;">
+            <p><strong>Class Teacher:</strong> {{ teacher.name }}</p>
+            <p><strong>Tel:</strong> {{ teacher.phone1 }}</p>
+        </div>
+
+        <!-- Display QR Code -->
+        <div class="qr-code">
+            <img src="data:image/png;base64,{{ qr_data }}" width="100" alt="Transcript QR Code">
+        </div>
     </div>
+
     <script>
         function printTranscript() {
-
             const content = document.querySelector('.container').outerHTML;
-        
             const printWindow = window.open('', '', 'height=700,width=900');
             const head = document.head.innerHTML;  
-        
+
             printWindow.document.write(`
                 <html>
-                    <head>
-                        ${head}
-                    </head>
-                    <body>
-                        ${content}
-                    </body>
+                    <head>${head}</head>
+                    <body>${content}</body>
                 </html>
             `);
-        
+
             printWindow.document.close();
             printWindow.focus();
-        
+
             setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
             }, 500);
         }
-        </script>
-        
-        
-        
+    </script>
 </body>
 </html>

@@ -1,103 +1,109 @@
 {% extends "layout.html" %}
-{% block title %}Profile {% endblock %}
+{% block title %}Profile{% endblock %}
 
 {% block content %}
-<script src="{{url_for('static', filename='js/main/upload.js')}}" defer></script>
-<div class="container flex row wrap ">
+<script src="{{ url_for('static', filename='js/main/upload.js') }}" defer></script>
+
+<div class="flex wrap gap-5 p-4 jst-cn aln-cn">
+
   {% if dest %}
-  {% if dest == 'edit' %}
-  <script>
-document.addEventListener('DOMContentLoaded', ()=>{
-    document.getElementById('add_notification').classList.add('none')
-})
-  </script>
-  {% elif dest == 'notifications' %}
-  <script >
-document.addEventListener('DOMContentLoaded', ()=>{
-    document.getElementById('update_teacher').classList.add('none')
-})
-  </script>  
-  {% else %}
-  <script >
-document.addEventListener('DOMContentLoaded', ()=>{
-    document.getElementById('update_teacher').classList.remove('none');
-      document.getElementById('add_notification').classList.remove('none');
-    });
-    </script>
-    {% endif %}  
-    {% endif %}  
-  <div id="update_teacher" class="flex grow mnw-300 col jst-cn mg-au bx-shd-0510 pd-10 bdr-5" style="width:90% !important; max-width: 500px;">
-  <form action="/update_teacher" class="form div flex col jst-cn aln-cn bg-gr-0 mg-5" method="POST" >
-  <img class="profile-pic ar-1" style="width: 50px !important;" src="{{teacher.pic}}">
-    <input type="text" name="name" id="name" value="{{teacher.name}}">
-    <input type="tel" name="phone" id="phone" class="input f-s-s" placeholder="Enter New Phone Number" value="{{teacher.phone1}}">
-    <input type="email" name="email" id="email" class="input f-s-s" placeholder="Enter New Email" value="{{teacher.email}}">
-    <input type="file" name="pdf" id="pdf" class="input f-s-s bd-1" >
+    {% if dest == 'edit' %}
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          document.getElementById('add_notification').classList.add('hidden');
+        });
+      </script>
+    {% elif dest == 'notifications' %}
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          document.getElementById('update_teacher').classList.add('hidden');
+        });
+      </script>
+    {% else %}
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          document.getElementById('update_teacher').classList.remove('hidden');
+          document.getElementById('add_notification').classList.remove('hidden');
+        });
+      </script>
+    {% endif %}
+  {% endif %}
+  <!-- Update Teacher Form -->
+  <div id="update_teacher" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 bd-1">
+    <form action="/update_teacher" method="POST" class="space-y-4">
+      <div class="flex justify-center">
+        <img src="{{ teacher.pic }}" class="w-20 h-20 rounded-full object-cover" alt="Profile Picture">
+      </div>
+      <input type="text" name="name" id="name" value="{{ teacher.name }}" class="w-full border p-2 rounded" required>
+      <input type="tel" name="phone" id="phone" class="w-full border p-2 rounded" placeholder="Enter New Phone Number" value="{{ teacher.phone1 }}" required>
+      <input type="email" name="email" id="email" class="w-full border p-2 rounded" placeholder="Enter New Email" value="{{ teacher.email }}" required>
+      <input type="file" name="pdf" id="pdf" class="w-full border p-2 rounded">
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Update</button>
+    </form>
 
-    <button type="submit" class="mg-5 bdr-40 pd-10 bg-b-0 cl-w">Update</button>
-  </form>
+    <h2 class="text-lg font-bold mt-6">Change Class / To Next Class</h2>
+    <form id="change-class-form" class="bg-red-200 rounded p-4 space-y-2 mt-2">
+      <input type="text" name="new_grade" class="w-full border p-2 rounded" placeholder="Enter new Form or Stream" required>
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Change Class</button>
+    </form>
+  </div>
 
-  <form id="change-class-form" class="div form  grow" style="background: rgb(255, 167, 167);">
-    <input type="text" class="input f-s-s" name="new_grade" placeholder="Enter new Form or Stream" required>
-    <button type="submit" class="mg-5 bdr-40 pd-10 bg-b-0 cl-w">Change Class</button>
-  </form>
-</div>
-
-<!-- notification -->
-
-<!-- ++++++++++++++++++++++++++++++++============ -->
-
-  <form id="add_notification" class="div form mg-5 grow col jst-cn aln-cn form div bx-shd-0500 bg-bl-0" action="add_notification" method="POST">
-     <input type="text" name="title" id="title" class="input f-s-s" placeholder="Enter Notification Name" required><br>
-     <label for="priority" class="cl-w">Priority</label><br>
-     <select name="priority" id="priority" class="bd-1 input f-s-s" required>
+  <!-- Notification Form -->
+  <form id="add_notification" action="add_notification" method="POST" class="w-full max-w-md bg-blue-100 rounded-lg shadow-md p-6 space-y-4">
+    <input type="text" name="title" id="title" class="w-full border p-2 rounded" placeholder="Enter Notification Name" required>
+    
+    <label for="priority" class="block font-medium">Priority</label>
+    <select name="priority" id="priority" class="w-full border p-2 rounded" required>
       <option value="">--select--</option>
       <option value="low">Low</option>
       <option value="medium">Medium</option>
       <option value="high">High</option>
-     </select>
-     <textarea name="content" id="content" rows="4" style="min-height: 3em; max-height: 20em;" class="bd-1 input f-s-s" placeholder="Enter Notification text" required></textarea>
-     <input type="text" name="date" id="date" style="visibility: none;">
-     <input type="file" id="pic-input" class="w-full border rounded-lg p-2" required>
-     <input type="text" id="pic" name="pic" class="w-full border rounded-lg p-2 mt-2 ">
-    <button type="submit" class="mg-5 bdr-40 pd-10 bg-b-0 cl-w">Add Notification</button>
+    </select>
+
+    <textarea name="content" id="content" rows="4" class="w-full border p-2 rounded resize-y" placeholder="Enter Notification text" ></textarea>
+    
+    <input type="text" name="date" id="date" class="hidden">
+    <input type="file" id="pic-input" class="w-full border p-2 rounded" required>
+    <input type="text" id="pic" name="pdf" class="w-full border p-2 rounded" placeholder="Picture URL">
+
+    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Add Notification</button>
   </form>
-  </div>
-  <script>
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const form = document.getElementById('add_notification')
-      form.addEventListener('submit', (e)=>{
-            e.preventDefault()
-      let today = new Date()
-      let formatedDate = today.toLocaleDateString()
-      let formatedTime = today.toLocaleTimeString()
-      document.getElementById('date').value = `${formatedDate} at ${formatedTime} `;
+
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('add_notification');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      let today = new Date();
+      let formatedDate = today.toLocaleDateString();
+      let formatedTime = today.toLocaleTimeString();
+      document.getElementById('date').value = `${formatedDate} at ${formatedTime}`;
       setTimeout(() => {
-      form.submit()
+        form.submit();
       }, 1000);
+    });
+
+    document.getElementById("change-class-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+
+      fetch("/change_class/{{ teacher.id }}", {
+        method: "POST",
+        body: formData
       })
-
-    })
-
-  document.getElementById("change-class-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-  
-    fetch("/change_class/{{ teacher.id }}", {
-      method: "POST",
-      body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === 'success') {
-        new swal("Success!", data.message, "success");
-      } else {
-        swal("Oops!", data.message, "error");
-      }
-    })
-    .catch(err => {
-      new swal("Error!", "Something went wrong.", "error");
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            alrt("Success!", data.message, "success");
+          } else {
+            alrt("Oops!", data.message, "error");
+          }
+        })
+        .catch(err => {
+          alrt("Error!", "Something went wrong.", "error");
+        });
     });
   });
-  </script>
-  {% endblock %}
+</script>
+{% endblock %}

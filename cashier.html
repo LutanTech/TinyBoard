@@ -4,162 +4,284 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Cashier</title>
-  <script src="../static/js/imports/SweetAlert2.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <span id="userSpan" class="hidden"></span>
-  <div class="searchDiv"></div>
+<span id="userSpan" class="hidden" data-usn=""></span>
 
-  <h2 class="text-3xl text-center font-bold my-6 text-blue-700">Cashier Zone</h2>
-  <div id="studentsDiv" class="max-w-6xl mx-auto"></div>
+<div class="searchDiv px-4"></div>
 
-  <!-- Overlay -->
-  <div id="studentOverlay" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
-    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-      <button onclick="closeOverlay()" class="bg-red-600 text-white px-3 py-1 rounded float-right">X</button>
-      <h3 id="studentNameTitle" class="text-xl font-semibold mb-4 text-center"></h3>
-      <form id="financeForm" class="space-y-4">
-        <input type="hidden" id="admHidden" name="adm">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Billed Amount</label>
-          <input type="number" id="billedInput" name="billed" required class="w-full border px-3 py-2 rounded" step="50">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Paid Amount</label>
-          <input type="number" id="paidInput" name="paid" required class="w-full border px-3 py-2 rounded" step="50">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Balance</label>
-          <input type="number" id="balanceOutput" disabled class="w-full border px-3 py-2 rounded bg-gray-100">
-        </div>
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Update Finances</button>
-      </form>
-    </div>
+<h2 class="text-3xl text-center font-bold my-6 text-blue-700">Cashier Zone</h2>
+<div id="studentsDiv" class="max-w-6xl mx-auto px-4"></div>
+
+<!-- Overlay -->
+<div id="studentOverlay" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+  <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+    <button onclick="closeOverlay()" class="bg-red-600 text-white px-3 py-1 rounded float-right">X</button>
+    <h3 id="studentNameTitle" class="text-xl font-semibold mb-4 text-center"></h3>
+    <form id="financeForm" class="space-y-4">
+      <input type="hidden" id="admHidden" name="adm">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Billed Amount</label>
+        <input type="number" id="billedInput" name="billed" required class="w-full border px-3 py-2 rounded" step="50">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Paid Amount</label>
+        <input type="number" id="paidInput" name="paid" required class="w-full border px-3 py-2 rounded" step="50">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Balance</label>
+        <input type="number" id="balanceOutput" disabled class="w-full border px-3 py-2 rounded bg-gray-100">
+      </div>
+
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Update Finances</button>
+    </form>
   </div>
+</div>
 
+<script>
+  let globalToken = null;
 
-  <script>
-    function checkDetails() {
-      var details = document.querySelector('#userSpan').getAttribute('data-usn');
-      if (details) {
-        const searchDiv = document.querySelector(".searchDiv");
-        searchDiv.innerHTML = `
-          <select id="formFilter" class="border px-4 py-2 rounded w-full md:w-1/4">
-            <option value="">All</option>
-            <option value="1">Form 1</option>
-            <option value="2">Form 2</option>
-            <option value="3">Form 3</option>
-            <option value="4">Form 4</option>
-          </select>
-        `;
-        document.getElementById('formFilter').addEventListener('change', filterTable);
-      }
-    }
+  window.onload = () => {
+    askCreds();
+  };
 
-    function filterTable() {
-      const selectedForm = document.getElementById('formFilter').value;
-      const rows = document.querySelectorAll('#studentsDiv tbody tr');
-      rows.forEach(row => {
-        const form = row.cells[2].textContent.trim();
-        const matchesForm = selectedForm === "" || form === selectedForm;
-        row.style.display = matchesForm ? '' : 'none';
-      });
-    }
-
-    function askCreds() {
-      const div = document.createElement('div');
-      div.className = "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50";
-
-      const formBox = document.createElement('div');
-      formBox.className = "bg-white p-6 rounded-lg shadow-lg w-full max-w-sm text-center";
-
-      const form = document.createElement('form');
-      form.className = "space-y-4";
-      form.innerHTML = `
-        <input id="username" type="text" placeholder="Enter Username" class="w-full px-3 py-2 border rounded" required>
-        <input id="password" type="password" placeholder="Enter Password" class="w-full px-3 py-2 border rounded" required>
-        <button type="submit" class="bg-green-600 text-white w-full px-4 py-2 rounded hover:bg-green-700">Submit</button>
+  function checkDetails() {
+    const details = document.querySelector('#userSpan').getAttribute('data-usn');
+    if (details) {
+      document.querySelector(".searchDiv").innerHTML = `
+        <select id="formFilter" class="border px-4 py-2 rounded w-full md:w-1/4">
+          <option value="">All</option>
+          <option value="1">Form 1</option>
+          <option value="2">Form 2</option>
+          <option value="3">Form 3</option>
+          <option value="4">Form 4</option>
+        </select>
       `;
-      formBox.appendChild(form);
-      div.appendChild(formBox);
-      document.body.appendChild(div);
-
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        if (username && password) {
-          fetchStudents(username, password);
-          div.remove();
-        }
-      });
+      document.getElementById('formFilter').addEventListener('change', filterTable);
     }
+  }
 
-    function fetchStudents(username, password) {
-      fetch(`http://127.0.0.1:7100/cashier`, {
+  function filterTable() {
+    const selectedForm = document.getElementById('formFilter').value;
+    const rows = document.querySelectorAll('#studentsDiv tbody tr');
+    rows.forEach(row => {
+      const form = row.cells[2].textContent.trim();
+      const matchesForm = selectedForm === "" || form === selectedForm;
+      row.style.display = matchesForm ? '' : 'none';
+    });
+  }
+
+  function askCreds() {
+    const div = document.createElement('div');
+    div.className = "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50";
+
+    const formBox = document.createElement('div');
+    formBox.className = "bg-white p-6 rounded-lg shadow-lg w-full max-w-sm text-center";
+
+    const form = document.createElement('form');
+    form.className = "space-y-4";
+    form.innerHTML = `
+      <input id="username" type="text" placeholder="Enter Username" class="w-full px-3 py-2 border rounded" required>
+      <input id="password" type="password" placeholder="Enter Password" class="w-full px-3 py-2 border rounded" required>
+      <div class="flex justify-center space-x-2">
+        ${[1,2,3,4,5,6].map(i => `<input type="text" id="otp${i}" maxlength="1" class="w-10 text-center border px-2 py-2 rounded" oninput="moveFocus(this, 'otp${i+1}')" />`).join('')}
+      </div>
+      <button type="submit" class="bg-green-600 text-white w-full px-4 py-2 rounded hover:bg-green-700">Submit</button>
+    `;
+    formBox.appendChild(form);
+    div.appendChild(formBox);
+    document.body.appendChild(div);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const otp = [...Array(6).keys()].map(i => document.getElementById(`otp${i+1}`).value).join('');
+
+      if (username && password && otp.length === 6) {
+        login(username, password, otp);
+        div.remove();
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Incomplete Info',
+          text: 'Please enter all credentials and OTP digits.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      }
+    });
+  }
+
+  function login(username, password, otp) {
+    fetch('https://tinyboard.pythonanywhere.com/cashier_login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, otp })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        globalToken = data.access_token;
+        fetchStudents(globalToken);
+      } else {
+        globalToken = data.access_token;
+        if(globalToken){
+        fetchStudents(globalToken);
+        Swal.fire({
+          icon: 'info',
+          title: 'Please wait...',
+          text: 'Validating Credentials.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          showConfirmButton: false
+        });
+        } else{
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Wrong Credentials.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      }
+      }
+    })
+    .catch(err => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: err.message,
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        showConfirmButton: false
+      });
+    });
+  }
+
+  function fetchStudents(token) {
+    fetch('https://tinyboard.pythonanywhere.com/cashier', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      const studentsDiv = document.getElementById('studentsDiv');
+      studentsDiv.innerHTML = '';
+
+      if (!data.students || data.students.length === 0) {
+        studentsDiv.innerHTML = '<p class="text-center text-gray-600">No students found.</p>';
+        return;
+      }
+
+      setTimeout(() => checkDetails(), 500);
+
+      const table = document.createElement('table');
+      table.className = "table-auto w-full border-collapse shadow-md bg-white";
+      table.innerHTML = `
+        <thead class="bg-blue-600 text-white">
+          <tr>
+            <th class="p-3 border">Name</th>
+            <th class="p-3 border">Adm No</th>
+            <th class="p-3 border">Form</th>
+            <th class="p-3 border">Action</th>
+          </tr>
+        </thead>
+      `;
+
+      const tbody = document.createElement('tbody');
+      data.students.forEach(student => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-blue-50";
+        tr.innerHTML = `
+          <td class="p-2 border">${student.name}</td>
+          <td class="p-2 border">${student.adm}</td>
+          <td class="p-2 border">${student.grade}</td>
+          <td class="p-2 border">
+            <button title="Edit finance info 💰" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+              onclick="openOverlay('${student.name}', '${student.adm}', ${student.billed}, ${student.paid}, ${student.balance})">
+              Edit
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      studentsDiv.innerHTML = `<div class="overflow-x-auto">${table.outerHTML}</div>`;
+    });
+  }
+
+  function openOverlay(name, adm, billed, paid, balance) {
+    document.getElementById('studentNameTitle').textContent = `Edit: ${name}`;
+    document.getElementById('admHidden').value = adm;
+    document.getElementById('billedInput').value = billed;
+    document.getElementById('paidInput').value = paid;
+    document.getElementById('balanceOutput').value = balance;
+    document.getElementById('studentOverlay').classList.remove('hidden');
+    document.getElementById('studentOverlay').classList.add('flex');
+
+    document.getElementById('billedInput').addEventListener('input', updateBalance);
+    document.getElementById('paidInput').addEventListener('input', updateBalance);
+
+    document.getElementById('financeForm').onsubmit = (e) => {
+      e.preventDefault();
+      const adm = document.getElementById('admHidden').value;
+      const billed = parseFloat(document.getElementById('billedInput').value) || 0;
+      const paid = parseFloat(document.getElementById('paidInput').value) || 0;
+      const balance = billed - paid;
+
+      fetch('https://tinyboard.pythonanywhere.com/update_finances', {
         method: 'POST',
         headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Authorization': 'Basic ' + btoa(`${username}:${password}`)
-        }
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${globalToken}`
+        },
+        body: JSON.stringify({ adm, billed, paid, balance })
       })
-      .then(res => {
-        if (!res.ok) throw new Error("Unauthorized or failed request.");
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        const studentsDiv = document.getElementById('studentsDiv');
-        studentsDiv.innerHTML = '';
-
-        if (!data.students || data.students.length === 0) {
-          studentsDiv.innerHTML = '<p class="text-center text-gray-600">No students found.</p>';
-          return;
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Updated!',
+            text: 'Finance details updated.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+          });
+          closeOverlay();
+          fetchStudents(globalToken);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Update Failed',
+            text: data.message || 'Something went wrong.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+          });
         }
-
-        setTimeout(() => checkDetails(), 500);
-
-        const userSpan = document.getElementById('userSpan');
-        userSpan.setAttribute('data-usn', username);
-        userSpan.setAttribute('data-psw', password);
-
-        const table = document.createElement('table');
-        table.className = "table-auto w-full border-collapse shadow-md bg-white";
-        table.innerHTML = `
-          <thead class="bg-blue-600 text-white">
-            <tr>
-              <th class="p-3 border">Name</th>
-              <th class="p-3 border">Adm No</th>
-              <th class="p-3 border">Form</th>
-              <th class="p-3 border">Action</th>
-            </tr>
-          </thead>
-        `;
-
-        const tbody = document.createElement('tbody');
-        data.students.forEach(student => {
-          const tr = document.createElement('tr');
-          tr.className = "hover:bg-blue-50";
-          tr.innerHTML = `
-            <td class="p-2 border">${student.name}</td>
-            <td class="p-2 border">${student.adm}</td>
-            <td class="p-2 border">${student.grade}</td>
-            <td class="p-2 border">
-              <button class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                onclick="openOverlay('${student.name}', '${student.adm}', ${student.billed}, ${student.paid}, ${student.balance})">
-                Edit
-              </button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        table.appendChild(tbody);
-        studentsDiv.appendChild(table);
       })
       .catch(err => {
-        new swal({
+        Swal.fire({
           icon: 'error',
           title: 'Error!',
           text: err.message,
@@ -169,78 +291,27 @@
           showConfirmButton: false
         });
       });
+    };
+  }
+
+  function closeOverlay() {
+    document.getElementById('studentOverlay').classList.add('hidden');
+    document.getElementById('studentOverlay').classList.remove('flex');
+  }
+
+  function updateBalance() {
+    const billed = parseFloat(document.getElementById('billedInput').value) || 0;
+    const paid = parseFloat(document.getElementById('paidInput').value) || 0;
+    document.getElementById('balanceOutput').value = billed - paid;
+  }
+
+  function moveFocus(current, nextId) {
+    if (current.value.length === 1 && nextId) {
+      const nextEl = document.getElementById(nextId);
+      if (nextEl) nextEl.focus();
     }
+  }
+</script>
 
-    function openOverlay(name, adm, billed, paid, balance) {
-      document.getElementById('studentNameTitle').textContent = `Edit: ${name}`;
-      document.getElementById('admHidden').value = adm;
-      document.getElementById('billedInput').value = billed;
-      document.getElementById('paidInput').value = paid;
-      document.getElementById('balanceOutput').value = balance;
-      document.getElementById('studentOverlay').classList.remove('hidden');
-      document.getElementById('studentOverlay').classList.add('flex');
-    }
-
-    function closeOverlay() {
-      document.getElementById('studentOverlay').classList.add('hidden');
-      document.getElementById('studentOverlay').classList.remove('flex');
-    }
-
-    function updateBalance() {
-      const billed = parseFloat(document.getElementById('billedInput').value) || 0;
-      const paid = parseFloat(document.getElementById('paidInput').value) || 0;
-      document.getElementById('balanceOutput').value = billed - paid;
-    }
-
-    document.getElementById('billedInput').addEventListener('input', updateBalance);
-    document.getElementById('paidInput').addEventListener('input', updateBalance);
-
-    document.getElementById('financeForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const formData = new FormData(this);
-      const adm = formData.get('adm');
-
-      const usn = document.getElementById('userSpan').getAttribute('data-usn');
-      const psw = document.getElementById('userSpan').getAttribute('data-psw');
-
-      fetch(`http://127.0.0.1:7100/update_finances?adm=${adm}`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Authorization': 'Basic ' + btoa(`${usn}:${psw}`)
-        }
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Update failed");
-        return res.text();
-      })
-      .then(() => {
-        new swal({
-          icon: 'success',
-          title: 'Balance Updated!',
-          toast: true,
-          position: 'top-end',
-          timer: 2000,
-          showConfirmButton: false
-        });
-        closeOverlay();
-        fetchStudents(usn, psw);
-      })
-      .catch(err => {
-        new swal({
-          icon: 'error',
-          title: 'Failed!',
-          text: err.message,
-          toast: true,
-          position: 'top-end',
-          timer: 3000,
-          showConfirmButton: false
-        });
-      });
-    });
-
-    document.addEventListener('DOMContentLoaded', askCreds);
-  </script>
 </body>
 </html>
