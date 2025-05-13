@@ -52,10 +52,12 @@ def generate_rand_id(length=6):
 class School(UserMixin, db.Model):
     id = db.Column(db.String, primary_key=True, default=lambda: str(uuid.uuid4()), unique=True)
     name = db.Column(db.String(300), nullable=False)
+    motto = db.Column(db.String(300), nullable=False)
     abr = db.Column(db.String(30), nullable=False)
     address = db.Column(db.String(30), nullable=False)
     email = db.Column(db.String(30), nullable=False)
     phone = db.Column(db.String(30), nullable=False)
+    phone2 = db.Column(db.String(30), nullable=False)
     logo = db.Column(db.Text, nullable=False)
     admin_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
@@ -266,40 +268,59 @@ def cashier():
     })
 
 
+from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 @app.route('/update_finances', methods=['POST'])
 @jwt_required()
 def update_finances():
     user_id = get_jwt_identity()
-    print(f"Authenticated user ID: {user_id}")
+    print(f"🔐 Authenticated user ID: {user_id}")
 
     data = request.get_json()
     adm = data.get('adm')
+    billed = data.get('billed')
+    paid = data.get('paid')
+
+    if adm is None or billed is None or paid is None:
+        return jsonify({'message': '❌ Missing adm, billed, or paid'}), 400
 
     student = Student.query.filter_by(adm=adm).first()
     if not student:
-        return jsonify({'message': 'Student not found'}), 404
+        return jsonify({'message': '🚫 Student not found'}), 404
 
     try:
-        student.billed = int(data.get('billed', student.billed))
-        student.paid = int(data.get('paid', student.paid))
+        student.billed = int(billed)
+        student.paid = int(paid)
         student.balance = student.billed - student.paid
+
         db.session.commit()
 
-        return jsonify({'message': 'Student finance updated successfully'}), 200
+        print(f"✅ User {user_id} updated finances for ADM {adm}")
+        return jsonify({
+            'message': '✅ Student finance updated successfully',
+            'student': {
+                'adm': student.adm,
+                'billed': student.billed,
+                'paid': student.paid,
+                'balance': student.balance
+            }
+        }), 200
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': f'Error updating finances: {str(e)}'}), 500
+        print(f"❌ Error updating finances for ADM {adm}: {e}")
+        return jsonify({'message': f'❌ Error updating finances: {str(e)}'}), 500
 
 
+@app.route('/create_bursar')
 def generate_TFA():
     user = Teacher.query.get(1000)
     if user:
-        user.twofa_secret = generate_2fa_secret()  # Generates a secret
+        user.twofa_secret = generate_2fa_secret()  
         db.session.commit()
-        print(f"2FA secret set: {user.twofa_secret}")
-    print('no user')
+        return jsonify(f"2FA secret set: {user.twofa_secret}")
+    return jsonify('no user')
 
 
 @app.route('/search', methods=['GET', 'POST'])
@@ -403,10 +424,14 @@ def default():
 @login_required
 def dashboard():
     student = Student.query.get(session.get('student_id'))
-    teacher = Teacher.query.filter_by(grade=student.grade).first()
-    notifs = Notification.query.filter_by(grade=student.grade).all()
-    school = School.query.first()
-    return render_template("dashboard.html", school=school, student=student, teacher=teacher, notifs=notifs)
+    if student:
+        teacher = Teacher.query.filter_by(grade=student.grade).first()
+        notifs = Notification.query.filter_by(grade=student.grade).all()
+        school = School.query.first()
+        return render_template("dashboard.html", school=school, student=student, teacher=teacher, notifs=notifs)
+    flash('No student found', 'error')
+    return redirect(url_for('logout'))
+
 
 @app.route('/staff_dashboard')
 @login_required

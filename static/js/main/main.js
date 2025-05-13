@@ -10,3 +10,15 @@ window.location.href = href
     }
 })
 })
+
+function alrt(icon, message, text, timer){
+    Swal.fire({
+                icon: icon,
+                title: message,
+                html: text,
+                toast: true,
+                position: "top-end",
+                showConfirmButton: false,
+                timer: timer | 3000
+    })
+}

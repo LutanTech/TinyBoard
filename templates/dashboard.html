@@ -53,13 +53,21 @@
         <div class="notifDiv-inner flex col mg-au bg-w bdr-10 cl-b jst-cn pd-10 aln-cn">
           {% if notifs %}
           {% for notif in notifs %}
-          <div class="notification _{{notif.priority}}">
+          <div class="notification _{{notif.priority}}" role="alert">
             <p class="notif-title">{{notif.name}}</p>
-            {% if notif.content and  not notif.pdf %}<p class="notif-content">{{notif.content}}</p> {% elif notif.pdf and  not notif.content %}<a href="{{notif.pdf}}" target="_blank" download="">Download</a>{% elif notif.content and notif.pdf %}<p class="notif-content">{{notif.content}}</p><a href="{{notif.pdf}}" target="_blank" download="">Download</a> {% endif %}
+            {% if notif.content and not notif.pdf %}
+                <p class="notif-content">{{notif.content}}</p>
+            {% elif notif.pdf and not notif.content %}
+                <a href="{{notif.pdf | safe}}" target="_blank" download="">Download</a>
+            {% elif notif.content and notif.pdf %}
+                <p class="notif-content">{{notif.content}}</p>
+                <a href="{{notif.pdf | safe}}" target="_blank" download="{{ notif.pdf }}">Download</a>
+            {% endif %}
             
             <p class="notif-date">{{notif.date }}</p>
             <p class="notif-regards">By {{ notif.sender }}</p>
         </div>
+        
         {% endfor %}
         {% else %}
         <h3>No notifications Available</h3>
@@ -112,16 +120,19 @@
       subjectsDiv.appendChild(flDiv);
     })
     .catch(error => {
-      new swal({
-        icon:'error',
-        title: `An Error Occured! ${error}`,
-        text:'Please, Try again',
-        position: 'top-end',
-        toast: true,
-        showConfirmButton: false,
-        timer: 3000
-      })
-    });
+  new swal({
+    icon: 'error',
+    title: `An Error Occurred! ${error}. Automatically logging you out...`,
+    text: 'Please, Try again',
+    position: 'top-end',
+    toast: true,
+    showConfirmButton: true,
+  }).then(() => {
+    setTimeout(() => {
+      window.location.href = '/logout';
+    }, 1000); 
+  });
+});
     }
     document.addEventListener('DOMContentLoaded', ()=>{
         fetchSubjects();

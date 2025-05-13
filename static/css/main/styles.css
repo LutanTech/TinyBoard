@@ -16,7 +16,7 @@ body, html {
 /* Sidebar Base */
 .sidebar {
     width: 240px;
-    background: linear-gradient(to top, #01132d, #010939);
+    background: linear-gradient(to top, #000000, #00a073);
     color: #fff;
     position: fixed;
     top: 0;

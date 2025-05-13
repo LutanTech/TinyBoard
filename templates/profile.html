@@ -1,58 +1,108 @@
 {% extends "layout.html" %}
 {% block title %}Profile{% endblock %}
+<style>
+  .card-sp {
+  transition: transform 0.2s ease-in-out;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: wrap !important;
+  min-width: 250px !important;
+  aspect-ratio: 1;
+}
+.card-sp:hover {
+  transform: scale(1.05);
+}
+.pop-up{
+  form{
+    margin: 20px auto !important;
+  }
 
+}
+.wrapper{
+  flex: 1 1 250px !important;
+}
+</style>
 {% block content %}
 <script src="{{ url_for('static', filename='js/main/upload.js') }}" defer></script>
+<div class="flex flex-wrap justify-center gap-4 p-4 w-100 wrapper" style="min-height: 200px !important;">
+  <div class="card-sp cursor-pointer px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded col shadow flex items-center gap-2 mnw-300" data-href="personal">
+    <i class="fas fa-user-cog text-blue-700"></i> Personal Settings
+  </div>
+  <div class="card-sp cursor-pointer px-4 py-2 bg-green-100 hover:bg-green-200 rounded col shadow flex items-center gap-2 mnw-300" data-href="notifications">
+    <i class="fas fa-bell text-green-700"></i> Add Notification
+  </div>
+  <div class="card-sp cursor-pointer px-4 py-2 bg-yellow-100 hover:bg-yellow-200 col rounded shadow flex items-center mnw-300 gap-2" data-href="school">
+    <i class="fas fa-school text-yellow-700"></i> Edit School
+  </div>
+  <div class="card-sp cursor-pointer px-4 py-2 bg-purple-100 hover:bg-purple-200 col rounded shadow flex items-center mnw-300 gap-2" data-href="change_class">
+    <i class="fas fa-exchange-alt text-purple-700"></i> Change Class
+  </div>
+</div>
 
-<div class="flex wrap gap-5 p-4 jst-cn aln-cn">
 
-  {% if dest %}
-    {% if dest == 'edit' %}
-      <script>
-        document.addEventListener('DOMContentLoaded', () => {
-          document.getElementById('add_notification').classList.add('hidden');
-        });
-      </script>
-    {% elif dest == 'notifications' %}
-      <script>
-        document.addEventListener('DOMContentLoaded', () => {
-          document.getElementById('update_teacher').classList.add('hidden');
-        });
-      </script>
-    {% else %}
-      <script>
-        document.addEventListener('DOMContentLoaded', () => {
-          document.getElementById('update_teacher').classList.remove('hidden');
-          document.getElementById('add_notification').classList.remove('hidden');
-        });
-      </script>
-    {% endif %}
-  {% endif %}
+<div class="pop-up ps-fx t-0 b-0 r-0 l-0 bg-b-0 w-100 h-v100 jst-cn aln-cn none" style="z-index: 600; overscroll-behavior: contain; overflow: auto !important;">
+<div class="innerPopup w-90 jst-cn aln-cn flex  mg-au mxw-500" style="justify-self: center; align-self: center;overflow: auto !important;"></div>
+</div>
+
+<div class="flex flex-wrap justify-center items-start gap-6 px-4 py-6">
+
+
+<div class="personal none">
   <!-- Update Teacher Form -->
-  <div id="update_teacher" class="w-full max-w-md bg-white rounded-lg shadow-md p-6 bd-1">
-    <form action="/update_teacher" method="POST" class="space-y-4">
-      <div class="flex justify-center">
-        <img src="{{ teacher.pic }}" class="w-20 h-20 rounded-full object-cover" alt="Profile Picture">
-      </div>
-      <input type="text" name="name" id="name" value="{{ teacher.name }}" class="w-full border p-2 rounded" required>
-      <input type="tel" name="phone" id="phone" class="w-full border p-2 rounded" placeholder="Enter New Phone Number" value="{{ teacher.phone1 }}" required>
-      <input type="email" name="email" id="email" class="w-full border p-2 rounded" placeholder="Enter New Email" value="{{ teacher.email }}" required>
-      <input type="file" name="pdf" id="pdf" class="w-full border p-2 rounded">
-      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Update</button>
-    </form>
-
-    <h2 class="text-lg font-bold mt-6">Change Class / To Next Class</h2>
-    <form id="change-class-form" class="bg-red-200 rounded p-4 space-y-2 mt-2">
+  <form id="update_teacher" action="/update_teacher" method="POST" class="cl-bl w-full max-w-md p-6 bg-white shadow-md rounded space-y-4">
+    <div class="flex justify-center">
+      <img src="{{ teacher.pic }}" class="w-24 h-24 rounded-full object-cover" alt="Profile Picture">
+    </div>
+    <input type="text" name="name" id="name" value="{{ teacher.name }}" class="w-full border p-2 rounded" required>
+    <input type="tel" name="phone" id="phone" value="{{ teacher.phone1 }}" class="w-full border p-2 rounded" placeholder="Phone Number" required>
+    <input type="email" name="email" id="email" value="{{ teacher.email }}" class="w-full border p-2 rounded" placeholder="Email" required>
+    <input type="file" name="pic-input" id="pic-input" class="w-full border p-2 rounded" oninput="handleImageInput('#pic-input', '#pic')">
+    <input type="text" name="pic" id="pic" class="hidden">
+    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Update</button>
+  </form>
+</div>
+  <div class="changeClass none" >
+    <form id="change-class-form" class="cl-bl w-full md:w-1/2 p-6 bg-white shadow-md rounded space-y-4">
+      <h2 class="text-lg font-semibold text-gray-700">Change Class / To Next Class</h2>
       <input type="text" name="new_grade" class="w-full border p-2 rounded" placeholder="Enter new Form or Stream" required>
       <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Change Class</button>
     </form>
+</div>
+<div class="school none">
+    <form id="school-details" action="/update_school" method="POST" class="cl-bl w-full md:w-1/2 p-6 bg-white shadow-md rounded space-y-4 mnw-300 cl-bl" style="width:90% !important">
+      <div class="flex justify-center">
+        <img src="{{ school.logo }}" alt="School Logo" class="w-24 h-24 rounded-full object-cover">
+      </div>
+
+      <label for="school-name" class="block text-sm font-medium text-gray-700">School Name</label>
+      <input type="text" name="school-name" id="school-name" value="{{ school.name }}" class="w-full border p-2 rounded" aria-label="School Name">
+
+      <label for="school-motto" class="block text-sm font-medium text-gray-700">School Motto</label>
+      <input type="text" name="school-motto" id="school-motto" value="{{ school.motto }}" class="w-full border p-2 rounded" aria-label="School Motto">
+
+      <label for="pic-input2" class="block text-sm font-medium text-gray-700">Upload Logo</label>
+      <input type="file" name="school-pic" id="pic-input2" class="w-full border p-2 rounded" aria-label="Upload School Logo" oninput="handleImageInput('#pic-input2', '#pic2')">
+      <input type="text" name="school-logo" id="pic2" class="hidden" aria-label="Logo URL">
+
+      <label for="school-tel" class="block text-sm font-medium text-gray-700">Primary Phone</label>
+      <input type="text" name="school-tel1" id="school-tel" value="{{ school.phone }}" class="w-full border p-2 rounded" aria-label="Primary Phone">
+
+      <label for="school-tel2" class="block text-sm font-medium text-gray-700">Secondary Phone</label>
+      <input type="text" name="school-tel2" id="school-tel2" value="{{ school.phone2 }}" class="w-full border p-2 rounded" aria-label="Secondary Phone">
+
+      <label for="school-email" class="block text-sm font-medium text-gray-700">Email</label>
+      <input type="email" name="school-email" id="school-email" value="{{ school.email }}" class="w-full border p-2 rounded" aria-label="School Email">
+
+      <label for="school-address" class="block text-sm font-medium text-gray-700">Address</label>
+      <input type="text" name="school-address" id="school-address" value="{{ school.address }}" class="w-full border p-2 rounded" aria-label="School Address">
+    </form>
   </div>
 
-  <!-- Notification Form -->
-  <form id="add_notification" action="add_notification" method="POST" class="w-full max-w-md bg-blue-100 rounded-lg shadow-md p-6 space-y-4">
-    <input type="text" name="title" id="title" class="w-full border p-2 rounded" placeholder="Enter Notification Name" required>
-    
-    <label for="priority" class="block font-medium">Priority</label>
+   <div class="notification none ">
+  <form id="add_notification" action="/add_notification" method="POST" class="cl-bl w-full max-w-md p-6 bg-white shadow-md rounded space-y-4">
+    <input type="text" name="title" id="title" class="w-full border p-2 rounded" placeholder="Notification Title Eg. Exams, Fees, Games" required>
+
+    <label for="priority" class="block text-sm font-medium text-gray-700">Priority</label>
     <select name="priority" id="priority" class="w-full border p-2 rounded" required>
       <option value="">--select--</option>
       <option value="low">Low</option>
@@ -60,50 +110,152 @@
       <option value="high">High</option>
     </select>
 
-    <textarea name="content" id="content" rows="4" class="w-full border p-2 rounded resize-y" placeholder="Enter Notification text" ></textarea>
-    
+    <textarea name="content" id="content" rows="4" class="w-full border p-2 rounded resize-y" placeholder="Notification Content"></textarea>
+
     <input type="text" name="date" id="date" class="hidden">
-    <input type="file" id="pic-input" class="w-full border p-2 rounded" required>
-    <input type="text" id="pic" name="pdf" class="w-full border p-2 rounded" placeholder="Picture URL">
+    <input type="file" id="pic-input1" class="w-full border p-2 rounded"  oninput="handleImageInput('#pic-input1', '#pic1')" accept="application/pdf">
+    <input type="text" id="pic1" name="pdf" class="hidden">
 
     <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Add Notification</button>
   </form>
-
+</div> 
 </div>
+{% if dest %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const section = "{{ dest }}";
+    const el = document.querySelector(`[data-href="${section}"]`);
+    if (el){
+      setTimeout(() => {
+      el.click();
+    }, 1000); 
+  }
+  });
+</script>
+{% endif %}
+
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('add_notification');
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      let today = new Date();
-      let formatedDate = today.toLocaleDateString();
-      let formatedTime = today.toLocaleTimeString();
-      document.getElementById('date').value = `${formatedDate} at ${formatedTime}`;
-      setTimeout(() => {
-        form.submit();
-      }, 1000);
+      const now = new Date();
+      const formatted = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString();
+      document.getElementById('date').value = formatted;
+      setTimeout(() => form.submit(), 1000);
     });
 
     document.getElementById("change-class-form").addEventListener("submit", function (e) {
       e.preventDefault();
       const formData = new FormData(this);
-
       fetch("/change_class/{{ teacher.id }}", {
         method: "POST",
         body: formData
       })
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'success') {
-            alrt("Success!", data.message, "success");
-          } else {
-            alrt("Oops!", data.message, "error");
-          }
-        })
-        .catch(err => {
-          alrt("Error!", "Something went wrong.", "error");
-        });
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          alrt("Success!", data.message, "success");
+        } else {
+          alrt("Oops!", data.message, "error");
+        }
+      })
+      .catch(() => {
+        alrt("Error!", "Something went wrong.", "error");
+      });
     });
+
+  let cards = document.querySelectorAll('.card-sp')
+  cards.forEach(card=>{
+    let link = card.getAttribute('data-href');
+    card.addEventListener('click', ()=>{
+      openPopup(link)
+    })
+  })
   });
+  function openPopup(type) {
+  const inner = document.querySelector('.innerPopup');
+  const popup = document.querySelector('.pop-up');
+
+  const sources = {
+    personal: document.querySelector('.personal'),
+    notifications: document.querySelector('.notification'),
+    change_class: document.querySelector('.changeClass'),
+    school: document.querySelector('.school')
+  };
+
+  popup.classList.toggle('flex');
+  popup.classList.toggle('none');
+
+  if (sources[type]) {
+    const element = sources[type];
+    const key = `${type}_inner`;
+
+    const html = element.innerHTML && element.innerHTML.trim() !== ''
+      ? element.innerHTML
+      : localStorage.getItem(key) || '';
+
+    inner.innerHTML = html;
+    localStorage.setItem(key, html);
+    element.innerHTML = ''; 
+  } else {
+    inner.innerHTML = `
+      <h1 class='bldr f-s-xl cl-w txt-cn pd-10 bg-gr' style='margin-top:50px !important'>
+        Please choose what to Edit
+      </h1>`;
+  }
+}
+
+
+  let inner = document.querySelector('.innerPopup')
+  let popup = document.querySelector('.pop-up')
+    popup.addEventListener('click', (e)=>{
+  if(e.target != inner && !inner.contains(e.target) && e.target == popup && popup.classList.contains('flex')){
+    document.querySelector('.pop-up').classList.toggle('flex') 
+       document.querySelector('.pop-up').classList.toggle('none')     
+
+  }
+     })
+     window.onload = function () {
+    const keys = ['personal', 'school', 'notifications', 'change_class'];
+  keys.forEach(key => {
+    localStorage.removeItem(`${key}_inner`);
+    
+  });
+};
+function handleImageInput(inputSelector, targetSelector) {
+  const input = document.querySelector(inputSelector);
+
+  if (!input) {
+    alrt('error', 'Missing element', `Element by id ${inputSelector} not found`)
+    return;
+  }
+
+  const file = input.files[0];
+
+  if (!file) {
+    alrt('error', 'Missing file', `No file found`)
+    return;
+  }
+
+  const maxSize = 10 * 1024 * 1024; 
+  if (file.size > maxSize) {
+    alrt('error', 'File is too large.',`Please upload a file smaller than 10MB. <p>Compress the file here if it is a pdf file. <a href='https://www.ilovepdf.com/compress_pdf' style='color:blue; text-decoration:underline;' target='_blank'> I ❤ PDF </a>   or if image use <a href='https://www.compress2go.com/' target='blank' class='cl-b t-d-u ' style='color:blue'>Compress2go</a>`, '15000');
+    return;
+  }
+
+
+  const reader = new FileReader();
+
+  reader.onload = function (event) {
+    document.querySelector(targetSelector).value = event.target.result;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+
+
+
 </script>
 {% endblock %}

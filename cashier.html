@@ -6,6 +6,7 @@
   <title>Cashier</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<link rel="shortcut icon" href="https://i.ibb.co/zWc5c4xw/image.png" type="image/png">
 </head>
 <body class="bg-gray-100 text-gray-800">
 
@@ -87,13 +88,22 @@
     const form = document.createElement('form');
     form.className = "space-y-4";
     form.innerHTML = `
-      <input id="username" type="text" placeholder="Enter Username" class="w-full px-3 py-2 border rounded" required>
-      <input id="password" type="password" placeholder="Enter Password" class="w-full px-3 py-2 border rounded" required>
-      <div class="flex justify-center space-x-2">
-        ${[1,2,3,4,5,6].map(i => `<input type="text" id="otp${i}" maxlength="1" class="w-10 text-center border px-2 py-2 rounded" oninput="moveFocus(this, 'otp${i+1}')" />`).join('')}
-      </div>
-      <button type="submit" class="bg-green-600 text-white w-full px-4 py-2 rounded hover:bg-green-700">Submit</button>
-    `;
+        <input id="username" type="text" placeholder="Enter Username" class="w-full px-3 py-2 border rounded" required>
+        <input id="password" type="password" placeholder="Enter Password" class="w-full px-3 py-2 border rounded" required>
+        <div class="flex justify-center space-x-2">
+          ${[1,2,3,4,5,6].map(i => `
+            <input
+              type="text"
+              id="otp${i}"
+              maxlength="1"
+              class="w-10 text-center border px-2 py-2 rounded"
+              oninput="handleInput(this, 'otp${i + 1}')"
+              onkeydown="handleKeyDown(event, this, 'otp${i - 1}')"
+            />`).join('')}
+        </div>
+        <button type="submit" class="bg-green-600 text-white w-full px-4 py-2 rounded hover:bg-green-700">Submit</button>
+      `;
+
     formBox.appendChild(form);
     div.appendChild(formBox);
     document.body.appendChild(div);
@@ -122,7 +132,7 @@
   }
 
   function login(username, password, otp) {
-    fetch('https://tinyboard.pythonanywhere.com/cashier_login', {
+    fetch('http://127.0.0.1:7100/cashier_login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, otp })
@@ -172,7 +182,7 @@
   }
 
   function fetchStudents(token) {
-    fetch('https://tinyboard.pythonanywhere.com/cashier', {
+    fetch('http://127.0.0.1:7100/cashier', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -199,7 +209,10 @@
             <th class="p-3 border">Name</th>
             <th class="p-3 border">Adm No</th>
             <th class="p-3 border">Form</th>
-            <th class="p-3 border">Action</th>
+            <th class="p-3 border">Billed</th>
+            <th class="p-3 border">Paid</th>
+            <th class="p-3 border">Balance</th>
+            <th class="p-3 border">Actions</th>
           </tr>
         </thead>
       `;
@@ -212,6 +225,9 @@
           <td class="p-2 border">${student.name}</td>
           <td class="p-2 border">${student.adm}</td>
           <td class="p-2 border">${student.grade}</td>
+          <td class="p-2 border">${student.billed}</td>
+          <td class="p-2 border">${student.paid}</td>
+          <td class="p-2 border">${student.balance}</td>
           <td class="p-2 border">
             <button title="Edit finance info 💰" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
               onclick="openOverlay('${student.name}', '${student.adm}', ${student.billed}, ${student.paid}, ${student.balance})">
@@ -246,7 +262,7 @@
       const paid = parseFloat(document.getElementById('paidInput').value) || 0;
       const balance = billed - paid;
 
-      fetch('https://tinyboard.pythonanywhere.com/update_finances', {
+      fetch('http://127.0.0.1:7100/update_finances', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -304,13 +320,20 @@
     const paid = parseFloat(document.getElementById('paidInput').value) || 0;
     document.getElementById('balanceOutput').value = billed - paid;
   }
-
-  function moveFocus(current, nextId) {
-    if (current.value.length === 1 && nextId) {
-      const nextEl = document.getElementById(nextId);
-      if (nextEl) nextEl.focus();
-    }
+  function handleInput(current, nextId) {
+  if (current.value.length === 1 && nextId) {
+    const nextEl = document.getElementById(nextId);
+    if (nextEl) nextEl.focus();
   }
+}
+
+function handleKeyDown(event, current, prevId) {
+  if (event.key === "Backspace" && current.value === "" && prevId) {
+    const prevEl = document.getElementById(prevId);
+    if (prevEl) prevEl.focus();
+  }
+}
+
 </script>
 
 </body>

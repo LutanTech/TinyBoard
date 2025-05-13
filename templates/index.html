@@ -16,6 +16,13 @@
        <style>
         html, body{
             font-family: Arial, Helvetica, sans-serif;
+            width: 100%;
+            height: 100%;
+            background-image: url(../static/images/bg9.png);background-blend-mode: multiply;
+            background-color: rgba(0, 166, 255, 0.403);
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
         .header{
             justify-content: right;
@@ -37,34 +44,25 @@
             padding: 2px 5px;
             text-transform: uppercase;
             user-select: none;
+            border: 1px solid white;
+            color: white;
+            background: rgb(2, 111, 141);
             &:hover{
             transform: translateY(-2px);
             border-bottom: 2px solid white;
-            color: rgb(20, 150, 0);
+            color: rgb(0, 34, 255);
+            background: white;
             }
             &:active{
                 scale: 0.98;
             }
 }
-.cover-vid {
-  object-fit: cover;
-  position: absolute;
-  z-index: -1; /* Push behind other content */
-  width: 100% !important;
-}
+
 
        </style>
 </head>
-<body class="ovf-y-h h-100 pd-0" style="background-image: url(../static/images/login-backg.webp); background-blend-mode: multiply; background-color: rgba(145, 255, 0, 0.403); margin: 2px;">
-    <video 
-    src="../static/videos/backgvid.mp4" 
-    autoplay 
-    loop 
-    muted 
-    playsinline 
-    class="cover-vid ps-fx t-0 r-0 l-0 b-0 w-v100 h-v100" 
-    preload="none">
-  </video>
+<body class="ovf-y-h h-100 pd-0" >
+
     <div class="container w-100 h-v100 flex col jst-cn aln-cn pd-0 mg-0">
 
     <div class="header flex row n-wrap w-100 pd-10 ps-fx t-0 r-0 l-0">
