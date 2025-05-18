@@ -6,12 +6,11 @@
   <title>Cashier</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-<link rel="shortcut icon" href="https://i.ibb.co/zWc5c4xw/image.png" type="image/png">
+  <link rel="shortcut icon" href="https://i.ibb.co/zWc5c4xw/image.png" type="image/png">
 </head>
 <body class="bg-gray-100 text-gray-800">
 
 <span id="userSpan" class="hidden" data-usn=""></span>
-
 <div class="searchDiv px-4"></div>
 
 <h2 class="text-3xl text-center font-bold my-6 text-blue-700">Cashier Zone</h2>
@@ -40,10 +39,18 @@
         <input type="number" id="balanceOutput" disabled class="w-full border px-3 py-2 rounded bg-gray-100">
       </div>
 
+    <div>
+        <label class="block text-sm font-medium text-gray-700" style="user-select:none;">
+        <input type="checkbox" checked id="receipt" style="margin-right:20px !important"> Generate Receipt</label>
+      </div>
+ 
       <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Update Finances</button>
     </form>
   </div>
 </div>
+<footer class="text-center text-sm text-gray-500 mt-6">
+  🧾 Keep those coins balanced, cashier wizard!
+</footer>
 
 <script>
   let globalToken = null;
@@ -88,21 +95,21 @@
     const form = document.createElement('form');
     form.className = "space-y-4";
     form.innerHTML = `
-        <input id="username" type="text" placeholder="Enter Username" class="w-full px-3 py-2 border rounded" required>
-        <input id="password" type="password" placeholder="Enter Password" class="w-full px-3 py-2 border rounded" required>
-        <div class="flex justify-center space-x-2">
-          ${[1,2,3,4,5,6].map(i => `
-            <input
-              type="text"
-              id="otp${i}"
-              maxlength="1"
-              class="w-10 text-center border px-2 py-2 rounded"
-              oninput="handleInput(this, 'otp${i + 1}')"
-              onkeydown="handleKeyDown(event, this, 'otp${i - 1}')"
-            />`).join('')}
-        </div>
-        <button type="submit" class="bg-green-600 text-white w-full px-4 py-2 rounded hover:bg-green-700">Submit</button>
-      `;
+      <input id="username" type="text" placeholder="Enter Username" class="w-full px-3 py-2 border rounded" required>
+      <input id="password" type="password" placeholder="Enter Password" class="w-full px-3 py-2 border rounded" required>
+      <div class="flex justify-center space-x-2">
+        ${[1,2,3,4,5,6].map(i => `
+          <input
+            type="text"
+            id="otp${i}"
+            maxlength="1"
+            class="w-10 text-center border px-2 py-2 rounded"
+            oninput="handleInput(this, 'otp${i + 1}')"
+            onkeydown="handleKeyDown(event, this, 'otp${i - 1}')"
+          />`).join('')}
+      </div>
+      <button type="submit" class="bg-green-600 text-white w-full px-4 py-2 rounded hover:bg-green-700">Submit</button>
+    `;
 
     formBox.appendChild(form);
     div.appendChild(formBox);
@@ -131,6 +138,20 @@
     });
   }
 
+  function handleInput(current, nextId) {
+    if (current.value.length === 1 && nextId <= "otp6") {
+      const nextInput = document.getElementById(nextId);
+      if (nextInput) nextInput.focus();
+    }
+  }
+
+  function handleKeyDown(e, current, prevId) {
+    if (e.key === "Backspace" && current.value === "") {
+      const prevInput = document.getElementById(prevId);
+      if (prevInput) prevInput.focus();
+    }
+  }
+
   function login(username, password, otp) {
     fetch('http://127.0.0.1:7100/cashier_login', {
       method: 'POST',
@@ -144,28 +165,28 @@
         fetchStudents(globalToken);
       } else {
         globalToken = data.access_token;
-        if(globalToken){
-        fetchStudents(globalToken);
-        Swal.fire({
-          icon: 'info',
-          title: 'Please wait...',
-          text: 'Validating Credentials.',
-          toast: true,
-          position: 'top-end',
-          timer: 3000,
-          showConfirmButton: false
-        });
-        } else{
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Wrong Credentials.',
-          toast: true,
-          position: 'top-end',
-          timer: 3000,
-          showConfirmButton: false
-        });
-      }
+        if (globalToken) {
+          fetchStudents(globalToken);
+          Swal.fire({
+            icon: 'info',
+            title: 'Please wait...',
+            text: 'Validating Credentials.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Wrong Credentials.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+          });
+        }
       }
     })
     .catch(err => {
@@ -225,9 +246,9 @@
           <td class="p-2 border">${student.name}</td>
           <td class="p-2 border">${student.adm}</td>
           <td class="p-2 border">${student.grade}</td>
-          <td class="p-2 border">${student.billed}</td>
-          <td class="p-2 border">${student.paid}</td>
-          <td class="p-2 border">${student.balance}</td>
+          <td class="p-2 border" id="${student.adm}-billed">${student.billed}</td>
+          <td class="p-2 border" id="${student.adm}-paid">${student.paid}</td>
+          <td class="p-2 border" id="${student.adm}-balance">${student.balance}</td>
           <td class="p-2 border">
             <button title="Edit finance info 💰" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
               onclick="openOverlay('${student.name}', '${student.adm}', ${student.billed}, ${student.paid}, ${student.balance})">
@@ -251,68 +272,82 @@
     document.getElementById('balanceOutput').value = balance;
     document.getElementById('studentOverlay').classList.remove('hidden');
     document.getElementById('studentOverlay').classList.add('flex');
-
+  }
     document.getElementById('billedInput').addEventListener('input', updateBalance);
     document.getElementById('paidInput').addEventListener('input', updateBalance);
+   document.getElementById('financeForm').onsubmit = (e) => {
+  e.preventDefault();
+  const adm = document.getElementById('admHidden').value;
+  const billed = parseFloat(document.getElementById('billedInput').value) || 0;
+  const paid = parseFloat(document.getElementById('paidInput').value) || 0;
+  const balance = billed - paid;
 
-    document.getElementById('financeForm').onsubmit = (e) => {
-      e.preventDefault();
-      const adm = document.getElementById('admHidden').value;
-      const billed = parseFloat(document.getElementById('billedInput').value) || 0;
-      const paid = parseFloat(document.getElementById('paidInput').value) || 0;
-      const balance = billed - paid;
+  fetch('http://127.0.0.1:7100/update_finances', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${globalToken}`
+    },
+    body: JSON.stringify({ adm, billed, paid, balance })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById(`${adm}-billed`).textContent = billed;
+      document.getElementById(`${adm}-paid`).textContent = paid;
+      document.getElementById(`${adm}-balance`).textContent = balance;
+      closeOverlay();
 
-      fetch('http://127.0.0.1:7100/update_finances', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${globalToken}`
-        },
-        body: JSON.stringify({ adm, billed, paid, balance })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Updated!',
-            text: 'Finance details updated.',
-            toast: true,
-            position: 'top-end',
-            timer: 3000,
-            showConfirmButton: false
-          });
-          closeOverlay();
-          fetchStudents(globalToken);
+      Swal.fire({
+        title: 'Finance Updated',
+        text: 'Do you want to generate a receipt for this transaction?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, generate it!',
+        cancelButtonText: 'No, thanks'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Redirect or open receipt generation
+          window.open(`http://127.0.0.1:7100/receipt/${adm}`, '_blank');
         } else {
           Swal.fire({
-            icon: 'error',
-            title: 'Update Failed',
-            text: data.message || 'Something went wrong.',
+            icon: 'success',
+            title: 'Done!',
+            text: 'Finance info updated successfully.',
             toast: true,
             position: 'top-end',
             timer: 3000,
             showConfirmButton: false
           });
         }
-      })
-      .catch(err => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error!',
-          text: err.message,
-          toast: true,
-          position: 'top-end',
-          timer: 3000,
-          showConfirmButton: false
-        });
       });
-    };
-  }
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: data.message || 'Something went wrong.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        showConfirmButton: false
+      });
+    }
+  })
+  .catch(err => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error!',
+      text: err.message,
+      toast: true,
+      position: 'top-end',
+      timer: 3000,
+      showConfirmButton: false
+    });
+  });
+};
 
   function closeOverlay() {
     document.getElementById('studentOverlay').classList.add('hidden');
-    document.getElementById('studentOverlay').classList.remove('flex');
   }
 
   function updateBalance() {
@@ -320,20 +355,6 @@
     const paid = parseFloat(document.getElementById('paidInput').value) || 0;
     document.getElementById('balanceOutput').value = billed - paid;
   }
-  function handleInput(current, nextId) {
-  if (current.value.length === 1 && nextId) {
-    const nextEl = document.getElementById(nextId);
-    if (nextEl) nextEl.focus();
-  }
-}
-
-function handleKeyDown(event, current, prevId) {
-  if (event.key === "Backspace" && current.value === "" && prevId) {
-    const prevEl = document.getElementById(prevId);
-    if (prevEl) prevEl.focus();
-  }
-}
-
 </script>
 
 </body>

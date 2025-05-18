@@ -26,6 +26,7 @@ from werkzeug.security import check_password_hash
 from io import BytesIO
 import json
 import hashlib
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///main.db'
@@ -57,7 +58,7 @@ class School(UserMixin, db.Model):
     address = db.Column(db.String(30), nullable=False)
     email = db.Column(db.String(30), nullable=False)
     phone = db.Column(db.String(30), nullable=False)
-    phone2 = db.Column(db.String(30), nullable=False)
+    phone2 = db.Column(db.String(30), nullable=True)
     logo = db.Column(db.Text, nullable=False)
     admin_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
@@ -79,6 +80,12 @@ class School(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
+class NewYearDetails(db.Model):
+    id = db.Column(db.String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    year = db.Column(db.String(10), nullable=False)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Teacher(UserMixin, db.Model):
     __tablename__ = 'teacher'
     id = db.Column(db.String, primary_key=True,  unique=True, default=generate_rand_id)
@@ -92,6 +99,8 @@ class Teacher(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     twofa_secret = db.Column(db.String(32), nullable=True)
+    year_id = db.Column(db.String, db.ForeignKey('new_year_details.id'))
+
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -105,7 +114,7 @@ class Student(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     adm = db.Column(db.String, unique=True)
-    email = db.Column(db.String(100), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=False, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
     pic = db.Column(db.Text, nullable=True)
     st_gender = db.Column(db.String(50), nullable=False)
@@ -119,6 +128,7 @@ class Student(UserMixin, db.Model):
     billed = db.Column(db.Integer, nullable=False, default=5000)
     paid = db.Column(db.Integer, nullable=False, default=0)
     subjects = db.Column(JSON, nullable=True)
+    year_id = db.Column(db.String, db.ForeignKey('new_year_details.id'))
 
     @hybrid_property
     def balance(self):
@@ -175,6 +185,17 @@ class Subject(db.Model):
     grade = db.Column(db.String, db.ForeignKey('teacher.grade'))
 
 
+class Receipt(db.Model):
+    id = db.Column(db.String, primary_key=True, default=generate_rand_id)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    billed = db.Column(db.Integer, nullable=False)
+    paid = db.Column(db.Integer, nullable=False)
+    balance = db.Column(db.Integer, nullable=False)
+    receipt_data = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    student = db.relationship('Student', backref=db.backref('receipts', lazy=True))
+
 
 class SearchForm(FlaskForm):
     query = StringField('Search', validators=[DataRequired()])
@@ -214,6 +235,55 @@ def generate_qr(user_id):
     buf.seek(0)
     return send_file(buf, mimetype='image/png')
 
+def clone_model_instance(instance, **overrides):
+    """Clone a SQLAlchemy model instance with optional overrides."""
+    data = {c.name: getattr(instance, c.name) for c in instance.__table__.columns if c.name != 'id'}
+    data.update(overrides)
+    return instance.__class__(**data)
+
+@app.route('/add_academic_year', methods=['POST'])
+@login_required
+def add_academic_year():
+    year = request.form.get('year')
+    if not year:
+        flash("Please provide a year.", "danger")
+        return redirect(url_for("dashboard"))
+
+    if NewYearDetails.query.filter_by(year=year).first():
+        flash("That year already exists!", "warning")
+        return redirect(url_for("dashboard"))
+
+    new_year = NewYearDetails(year=year)
+    db.session.add(new_year)
+    db.session.flush()  
+
+    latest_year = NewYearDetails.query.order_by(NewYearDetails.date_created.desc()).first()
+    if not latest_year:
+        flash("No base year to clone from.", "danger")
+        return redirect(url_for("dashboard"))
+
+    old_teachers = Teacher.query.filter_by(year_id=latest_year.id).all()
+    for t in old_teachers:
+        new_teacher = clone_model_instance(t, year_id=new_year.id)
+        db.session.add(new_teacher)
+
+    old_students = Student.query.filter_by(year_id=latest_year.id).all()
+    for s in old_students:
+        new_student = clone_model_instance(s, year_id=new_year.id)
+        db.session.add(new_student)
+
+
+    try:
+        db.session.commit()
+        flash(f"Year {year} created with cloned data from {latest_year.year}.", "success")
+    except Exception as e:
+        db.session.rollback()
+        print("Cloning error:", e)
+        flash("Error during year setup. Please try again.", "danger")
+
+    return redirect(url_for("dashboard"))
+
+
 @app.route('/cashier_login', methods=['POST'])
 def cashier_login():
     data = request.get_json()
@@ -225,8 +295,9 @@ def cashier_login():
 
     user = Teacher.query.filter_by(name=username).first()
 
+
     if not user or not check_password_hash(user.password_hash, password):
-        return jsonify({"message": "Invalid credentials"}), 401
+        return jsonify({"message": f"Invalid credentials. Real one: {user.is_admin}"}), 401
 
     if not user.twofa_secret:
         return jsonify({"message": "2FA not set up"}), 403
@@ -268,49 +339,7 @@ def cashier():
     })
 
 
-from flask import request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
-@app.route('/update_finances', methods=['POST'])
-@jwt_required()
-def update_finances():
-    user_id = get_jwt_identity()
-    print(f"🔐 Authenticated user ID: {user_id}")
-
-    data = request.get_json()
-    adm = data.get('adm')
-    billed = data.get('billed')
-    paid = data.get('paid')
-
-    if adm is None or billed is None or paid is None:
-        return jsonify({'message': '❌ Missing adm, billed, or paid'}), 400
-
-    student = Student.query.filter_by(adm=adm).first()
-    if not student:
-        return jsonify({'message': '🚫 Student not found'}), 404
-
-    try:
-        student.billed = int(billed)
-        student.paid = int(paid)
-        student.balance = student.billed - student.paid
-
-        db.session.commit()
-
-        print(f"✅ User {user_id} updated finances for ADM {adm}")
-        return jsonify({
-            'message': '✅ Student finance updated successfully',
-            'student': {
-                'adm': student.adm,
-                'billed': student.billed,
-                'paid': student.paid,
-                'balance': student.balance
-            }
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"❌ Error updating finances for ADM {adm}: {e}")
-        return jsonify({'message': f'❌ Error updating finances: {str(e)}'}), 500
 
 
 @app.route('/create_bursar')
@@ -447,7 +476,7 @@ def staff_dashboard():
     students = Student.query.filter_by(grade=teacher.grade).all()
     teachers = Teacher.query.filter_by(is_active=True).all()
     print(f"School is: {school}")
-    if teacher.name == 'Lutan' and (not school or school is None):
+    if teacher.name == 'Default' and (not school or school is None):
         flash('Add School Details First', 'info')
         return render_template(
             'staff_dashboard.html',
@@ -510,6 +539,154 @@ def areasi():
     } for s in uncleared]
 
     return jsonify({'students' : data})
+
+@app.route("/update_school", methods=["POST"])
+@login_required
+def update_school():
+    school = School.query.filter_by(admin_id=current_user.id).first()
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("staff_dashboard")) 
+    school.name = request.form.get("school-name", school.name)
+    school.motto = request.form.get("school-motto", school.motto)
+    school.phone = request.form.get("school-tel1", school.phone)
+    school.phone2 = request.form.get("school-tel2", school.phone2)
+    school.email = request.form.get("school-email", school.email)
+    school.address = request.form.get("school-address", school.address)
+
+    new_logo = request.form.get("school-logo")
+    if new_logo:
+        school.logo = new_logo
+
+    try:
+        db.session.commit()
+        flash("School profile updated successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        print("Error updating school:", e)
+        flash("Something went wrong while updating. Please try again.", "danger")
+
+    return redirect(url_for("profile")) 
+
+from flask import request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+@app.route('/update_finances', methods=['POST'])
+@jwt_required()
+def update_finances():
+    user_id = get_jwt_identity()
+    print(f"🔐 Authenticated user ID: {user_id}")
+
+    data = request.get_json()
+    adm = data.get('adm')
+    billed = data.get('billed')
+    paid = data.get('paid')
+
+    if adm is None or billed is None or paid is None:
+        return jsonify({'message': '❌ Missing adm, billed, or paid', 'icon':'error'}), 400
+
+    student = Student.query.filter_by(adm=adm).first()
+    if not student:
+        return jsonify({'message': '🚫 Student not found', 'icon': 'error'}), 404
+
+    try:
+        student.billed = int(billed)
+        student.paid = int(paid)
+        db.session.commit()
+
+        receipt_id = generate_rand_id()
+        generate_receipt(student.id, receipt_id, adm, billed, paid)
+        print('Generating Receipt...')
+        return jsonify({
+            'message': '✅ Student finance updated successfully',
+            'icon': 'success',
+            'receipt_url': f'/receipt/{adm}/{receipt_id}',
+            'student': {
+                'adm': student.adm,
+                'billed': student.billed,
+                'paid': student.paid,
+                'balance': student.balance
+            }
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error updating finances for ADM {adm}: {e}")
+        return jsonify({'icon': 'error', 'message': f'❌ Error updating finances: {str(e)}'}), 500
+
+
+from flask import render_template, abort
+from datetime import datetime
+
+from flask import send_file, flash
+from io import BytesIO
+import qrcode
+import json
+
+def generate_receipt(st_id, receipt_id, adm, billed, paid):
+    try:
+        balance = int(billed - paid)
+        qr_data = json.dumps({
+            "receipt_id": receipt_id,
+            "adm": adm,
+            "billed": billed,
+            "paid": paid,
+            "balance": balance,
+            "date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+        img = qrcode.make(qr_data)
+        buf = BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+
+        # Proper base64 encoding
+        encoded_qr = base64.b64encode(buf.getvalue()).decode('utf-8')
+
+        new_receipt = Receipt(
+            student_id=st_id,
+            id=receipt_id,
+            billed=billed,
+            paid=paid,
+            balance=balance,
+            receipt_data=encoded_qr  # store as string
+        )
+
+        db.session.add(new_receipt)
+        db.session.commit()
+
+        flash("Receipt generated successfully!", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error saving receipt: {str(e)}", "error")
+        print(f"Error saving receipt: {str(e)}")
+        return "Error generating receipt", 500
+
+
+@app.route('/receipt/<adm>/<id>')
+def show_receipt(adm, id):
+    receipt = Receipt.query.filter_by(id=id).first()
+    student = Student.query.filter_by(adm=adm).first()
+
+    if not receipt:
+        abort(404, "Receipt not found")
+    if not student:
+        abort(404, "Student not found")
+
+    school = School.query.first()
+    billed = receipt.billed
+    paid = receipt.paid
+    balance = receipt.balance
+
+    return render_template('receipt.html',
+                           student=student,
+                           school=school,
+                           billed=billed,
+                           receipt=receipt,
+                           paid=paid,
+                           balance=balance,
+                           date=datetime.now().strftime("%d %B %Y, %I:%M %p"))
 
 @app.route('/student')
 @login_required
@@ -622,7 +799,9 @@ def add_school():
         logo=data['pic'],
         address=data['address'],
         phone=data['phone'],
-        email=data['email']
+        email=data['email'],
+        motto=data['motto']
+
 
 
     )
@@ -662,13 +841,21 @@ def add_student():
         )
         student.set_password(f"student{data['adm']}")
         subjects = Subject.query.filter_by(grade=student.grade).all()
-        db.session.add(student)
-        for subject in subjects:
-            new_grade = Grade(subject_id=subject.id, student_adm=student.adm, teacher_id=teacher.id, exam1=0, exam2=0)
-            db.session.add(new_grade)
+        try:
+            print(f"Class: {data['grade']}")
+            db.session.add(student)
+            print(f"Saved grade: {student.grade}")
+            for subject in subjects:
+                new_grade = Grade(subject_id=subject.id, student_adm=student.adm, teacher_id=teacher.id, exam1=0, exam2=0)
+                db.session.add(new_grade)
+                print('commited')
             db.session.commit()
-        flash("Student added successfully!", "success")
-        return redirect(url_for('add_student'))
+            print('final commit')
+            flash("Student added successfully!", "success")
+            return render_template('add_student.html', school=school)
+        except Exception as e:
+            flash(f'Failed to add student. Error {str(e)}', 'error')
+            return render_template('add_student.html', school=school)
 
     return render_template('add_student.html', school=school)
 
@@ -789,47 +976,51 @@ def view_transcript(transcript_id):
 @app.route('/scan')
 def scan():
     return render_template('scan_qr.html')
-
 @app.route('/update_grade', methods=['POST'])
 def update_grade():
     data = request.get_json()
+
     student_adm = data.get('student_adm')
     subject_id = data.get('subject_id')
-    trId = data.get('trId')
+    tr_id = data.get('trId')
+    grade_val = data.get('grade')
+
+    if not all([student_adm, subject_id, tr_id, grade_val]):
+        return jsonify({"error": "Missing required fields"}), 400
 
     try:
-        new_grade = int(data.get('grade'))
-        trId = int(trId)
-    except (ValueError, TypeError):
-        return jsonify({"error": "Invalid grade or teacher ID format"}), 400
-
-    subject = Subject.query.filter_by(teacher_id=trId).first()
-
-    print(f"Received data: student_adm={student_adm}, subject_id={subject_id}, new_grade={new_grade}")
-
-    if subject and student_adm and subject_id is not None and trId == subject.teacher_id:
-        grade = Grade.query.filter_by(student_adm=student_adm, subject_id=subject_id).first()
-        if grade:
-            grade.exam1 = new_grade
-            db.session.commit()
-
-            all_grades = Grade.query.filter_by(student_adm=student_adm).all()
-            total = sum(g.exam1 for g in all_grades if g.exam1 is not None)
-
-            return jsonify({
-                "success": True,
-                "grade": new_grade,
-                "adm": student_adm,
-                "tr": trId,
-                "total": total
-            }), 200
-        else:
-            print('Grade not found, returning 400')
-            return jsonify({"error": "Grade not found"}), 400
-
-    return jsonify({"error": "Invalid data or unauthorized"}), 400
+        subject_id = int(subject_id)
+        tr_id = tr_id
+        new_grade = int(grade_val)
+    except ValueError:
+        return jsonify({"error": "Grade, subject ID must be integers"}), 400
 
 
+    subject = Subject.query.filter_by(id=subject_id, teacher_id=tr_id).first()
+    if not subject:
+        return jsonify({"error": "Subject not found or not authorized"}), 403
+
+    grade = Grade.query.filter_by(student_adm=student_adm, subject_id=subject_id).first()
+    if not grade:
+        return jsonify({"error": "Grade record not found"}), 404
+
+    try:
+        grade.exam1 = new_grade
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Failed to update grade: {e}")
+        return jsonify({"error": "Database error during grade update"}), 500
+    all_grades = Grade.query.filter_by(student_adm=student_adm).all()
+    total = sum(g.exam1 for g in all_grades if g.exam1 is not None)
+
+    return jsonify({
+        "success": True,
+        "grade": new_grade,
+        "adm": student_adm,
+        "tr": tr_id,
+        "total": total
+    }), 200
 
 
 @app.route('/finances')
@@ -1006,7 +1197,7 @@ def add_subject():
                 student_adm=student.adm
             )
             db.session.add(new_grade)
-
+            db.session.commit()
         db.session.commit()
 
         flash(f'Subject "{name}" added with grade entries for students.', 'success')
@@ -1078,8 +1269,12 @@ def update_teacher():
     teacher = Teacher.query.get(current_user.id)
     teacher.phone1 = request.form.get("phone", teacher.phone1)
     teacher.name = request.form.get("name", teacher.name)
-    teacher.pic = request.form.get("pic", teacher.pic)
     teacher.email = request.form.get("email", teacher.email)
+
+    new_pic = request.form.get("pic")
+    if new_pic:
+        teacher.pic = new_pic
+
     try:
         db.session.commit()
         flash("Profile updated successfully!", "success")
@@ -1089,6 +1284,7 @@ def update_teacher():
         print(e)
 
     return redirect(url_for("profile"))
+
 
 @app.route('/send-bulk-whatsapp')
 def send_bulk_whatsapp():
@@ -1231,4 +1427,3 @@ if __name__ == '__main__':
         db.create_all()
     print("Go Filter the Kids Lutan!. TinyBoard is running")
     app.run(debug=True, port=7100, host='0.0.0.0')
-

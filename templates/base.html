@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="description" content="learning">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %} {% endblock %} |eZone </title>
+    <title>{% block title %} {% endblock %} |tinyBoard</title>
     <link rel="stylesheet" href="../static/css/imports/main.css">  
       <link rel="stylesheet" href="../static/css/main/styles.css">
       <script src="../static/js/main/main.js"></script>
@@ -21,7 +21,7 @@
     </div>
         <div class="div flex col jst-cn aln-cn gap-10">
             <img class="logo pd-10 bdr-50" src=" {{ school.logo }}">
-            <div class="name">eZone</div>
+            <div class="name none">{{ school.name }}</div>
         </div>
 <ul class="pc-ul flex col jst-cn grow gap-5">
     <li data-href="/dashboard"> <i class="fas fa-home"></i> <span class="tc none"> Home</span> </li>

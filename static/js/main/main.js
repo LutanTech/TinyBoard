@@ -22,3 +22,9 @@ function alrt(icon, message, text, timer){
                 timer: timer | 3000
     })
 }
+document.addEventListener('DOMContentLoaded', ()=>{
+document.querySelector('.menu-toggle').addEventListener('click', ()=>{
+document.querySelector('.name').classList.toggle('block');
+document.querySelector('.name').classList.toggle('none');
+})
+})
