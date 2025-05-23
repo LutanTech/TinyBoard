@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cashier</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="shortcut icon" href="https://i.ibb.co/zWc5c4xw/image.png" type="image/png">
+  <link rel="stylesheet" href="../static/css/imports/tailwind.css">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+<span id="userSpan" class="hidden" data-usn=""></span>
+<div class="searchDiv px-4"></div>
+
+<h2 class="text-3xl text-center font-bold my-6 text-blue-700">Cashier Zone</h2>
+<div id="studentsDiv" class="max-w-6xl mx-auto px-4"></div>
+
+<!-- Overlay -->
+<div id="studentOverlay" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+  <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+    <button onclick="closeOverlay()" class="bg-red-600 text-white px-3 py-1 rounded float-right">X</button>
+    <h3 id="studentNameTitle" class="text-xl font-semibold mb-4 text-center"></h3>
+    <form id="financeForm" class="space-y-4">
+      <input type="hidden" id="admHidden" name="adm">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Billed Amount</label>
+        <input type="number" id="billedInput" name="billed" required class="w-full border px-3 py-2 rounded" step="50">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Paid Amount</label>
+        <input type="number" id="paidInput" name="paid" required class="w-full border px-3 py-2 rounded" step="50">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Balance</label>
+        <input type="number" id="balanceOutput" disabled class="w-full border px-3 py-2 rounded bg-gray-100">
+      </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-700" style="user-select:none;">
+        <input type="checkbox" checked id="receipt" style="margin-right:20px !important"> Generate Receipt</label>
+      </div>
+ 
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Update Finances</button>
+    </form>
+  </div>
+</div>
+<footer class="text-center text-sm text-gray-500 mt-6">
+  🧾 Keep those coins balanced, cashier wizard!
+</footer>
+
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Finance Dashboard with Payment Type & Tx Code</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+  <header class="bg-blue-700 text-white p-4 text-center font-bold text-xl">
+    Lutan’s Magical Student Finance Portal 🧙‍♂️💰
+  </header>
+
+  <main class="flex-grow p-4">
+    <div id="userSpan" data-usn="someUser123" class="hidden"></div>
+
+    <div class="searchDiv mb-4"></div>
+
+    <div id="studentsDiv" class="overflow-x-auto shadow rounded bg-white p-4">
+      <p class="text-center text-gray-600">Loading students will happen here after login...</p>
+    </div>
+  </main>
+
+  <!-- Edit finance overlay modal -->
+  <div id="studentOverlay" 
+       class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative" style="margin:auto">
+      <h2 id="studentNameTitle" class="text-xl font-semibold mb-4">Edit: Student Name</h2>
+      <form id="financeForm" class="space-y-4">
+        <input type="hidden" id="admHidden" />
+        
+        <div>
+          <label for="billedInput" class="block font-medium mb-1">Amount Billed</label>
+          <input type="number" id="billedInput" class="w-full border px-3 py-2 rounded" min="0" step="0.01" required />
+        </div>
+
+        <div>
+          <label for="paidInput" class="block font-medium mb-1">Amount Paid</label>
+          <input type="number" id="paidInput" class="w-full border px-3 py-2 rounded" min="0" step="0.01" required />
+        </div>
+
+        <div>
+          <label for="balanceOutput" class="block font-medium mb-1">Balance</label>
+          <input type="number" id="balanceOutput" class="w-full border px-3 py-2 rounded bg-gray-100" readonly />
+        </div>
+
+        <div class="flex justify-end space-x-2 mt-4">
+          <button type="button" 
+                  class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600" 
+                  onclick="closeOverlay()">
+            Cancel
+          </button>
+          <button type="submit" 
+                  class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+<script>
+  let globalToken = null;
+
+  window.onload = () => {
+    askCreds();
+    setupFormListeners();
+  };
+
+  function setupFormListeners() {
+    const billedInput = document.getElementById('billedInput');
+    const paidInput = document.getElementById('paidInput');
+    const balanceOutput = document.getElementById('balanceOutput');
+
+    function updateBalance() {
+      const billed = parseFloat(billedInput.value) || 0;
+      const paid = parseFloat(paidInput.value) || 0;
+      balanceOutput.value = (billed - paid).toFixed(2);
+    }
+    billedInput.addEventListener('input', updateBalance);
+    paidInput.addEventListener('input', updateBalance);
+
+    const form = document.getElementById('financeForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const admissionNo = document.getElementById('admHidden').value;
+      const billed = billedInput.value;
+      const paid = paidInput.value;
+      const balance = balanceOutput.value;
+
+      const { value: paymentType } = await Swal.fire({
+        title: 'Select Payment Type',
+        input: 'select',
+        inputOptions: {
+          cash: 'Cash',
+          mpesa: 'Mpesa',
+          bank: 'Bank',
+          cheque: 'Cheque',
+          other: 'Other'
+        },
+        inputPlaceholder: 'Choose payment type',
+        showCancelButton: true,
+        inputValidator: value => value ? null : 'You need to select a payment type!'
+      });
+
+      if (!paymentType) return;
+
+      let transactionCode = '';
+      if (['mpesa', 'bank'].includes(paymentType)) {
+        const { value: txCode } = await Swal.fire({
+          title: `Enter Transaction Code for ${paymentType.toUpperCase()}`,
+          input: 'text',
+          inputPlaceholder: 'Transaction Code',
+          showCancelButton: true,
+          inputValidator: value => value.trim() ? null : 'Transaction code is required!'
+        });
+        if (!txCode) return;
+        transactionCode = txCode.trim();
+      }
+      try {
+        const res = await fetch('http://127.0.0.1:7100/update_finances', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${globalToken}` 
+          },
+          body: JSON.stringify({
+            adm: admissionNo,
+            billed,
+            paid,
+            payment_type: paymentType,
+            transaction_code: transactionCode || null
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw data;
+        }
+
+        Swal.fire({
+          icon: data.icon || 'success',
+          title: 'Success!',
+          html: `
+            <p>${data.message}</p>
+            <p><strong>Balance:</strong> ${data.student.balance}</p>
+            <a href="http://127.0.0.1:7100${data.receipt_url}" target="_blank">📄 View Receipt</a>
+          `
+        });
+
+        closeOverlay();
+        fetchStudents(globalToken)
+        // Optionally refresh data table or UI here...
+
+      } catch (err) {
+        Swal.fire({
+          icon: err.icon || 'error',
+          title: 'Oops...',
+          html: err.message || 'An error occurred while updating finances.'
+        });
+      }
+
+      closeOverlay();
+    });
+  }
+
+  function checkDetails() {
+    const details = document.querySelector('#userSpan').getAttribute('data-usn');
+    if (details) {
+      document.querySelector(".searchDiv").innerHTML = `
+        <select id="formFilter" class="border px-4 py-2 rounded w-full md:w-1/4">
+          <option value="">All</option>
+          <option value="1">Form 1</option>
+          <option value="2">Form 2</option>
+          <option value="3">Form 3</option>
+          <option value="4">Form 4</option>
+        </select>
+      `;
+      document.getElementById('formFilter').addEventListener('change', filterTable);
+    }
+  }
+
+  function filterTable() {
+    const selectedForm = document.getElementById('formFilter').value;
+    const rows = document.querySelectorAll('#studentsDiv tbody tr');
+    rows.forEach(row => {
+      const form = row.cells[2].textContent.trim();
+      row.style.display = (!selectedForm || form === selectedForm) ? '' : 'none';
+    });
+  }
+
+  function askCreds() {
+    const div = document.createElement('div');
+    div.className = "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50";
+
+    const formBox = document.createElement('div');
+    formBox.className = "bg-white p-6 rounded-lg shadow-lg w-full max-w-sm text-center";
+
+    const form = document.createElement('form');
+    form.className = "space-y-4";
+    form.innerHTML = `
+      <input id="username" type="text" placeholder="Enter Username" class="w-full px-3 py-2 border rounded" required>
+      <input id="password" type="password" placeholder="Enter Password" class="w-full px-3 py-2 border rounded" required>
+      <div class="flex justify-center space-x-2">
+        ${[1,2,3,4,5,6].map(i => `
+          <input type="text" id="otp${i}" maxlength="1" class="w-10 text-center border px-2 py-2 rounded" oninput="handleInput(this, 'otp${i + 1}')" onkeydown="handleKeyDown(event, this, 'otp${i - 1}')" />
+        `).join('')}
+      </div>
+      <button type="submit" class="bg-green-600 text-white w-full px-4 py-2 rounded hover:bg-green-700">Submit</button>
+    `;
+
+    formBox.appendChild(form);
+    div.appendChild(formBox);
+    document.body.appendChild(div);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const otp = [...Array(6).keys()].map(i => document.getElementById(`otp${i+1}`).value).join('');
+
+      if (username && password && otp.length === 6) {
+        login(username, password, otp);
+        div.remove();
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Incomplete Info',
+          text: 'Please enter all credentials and OTP digits.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      }
+    });
+  }
+
+  function handleInput(current, nextId) {
+    if (current.value.length === 1 && nextId <= "otp6") {
+      const nextInput = document.getElementById(nextId);
+      if (nextInput) nextInput.focus();
+    }
+  }
+
+  function handleKeyDown(e, current, prevId) {
+    if (e.key === "Backspace" && current.value === "") {
+      const prevInput = document.getElementById(prevId);
+      if (prevInput) prevInput.focus();
+    }
+  }
+
+  function login(username, password, otp) {
+    fetch('http://127.0.0.1:7100/cashier_login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, otp })
+    })
+    .then(res => res.json())
+    .then(data => {
+      globalToken = data.access_token;
+      if (data.success || globalToken) {
+        fetchStudents(globalToken);
+        Swal.fire({
+          icon: 'info',
+          title: 'Please wait...',
+          text: 'Validating Credentials.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Wrong Credentials.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      }
+    })
+    .catch(err => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: err.message,
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        showConfirmButton: false
+      });
+    });
+  }
+
+  function fetchStudents(token) {
+    fetch('http://127.0.0.1:7100/cashier', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      const studentsDiv = document.getElementById('studentsDiv');
+      studentsDiv.innerHTML = '';
+
+      if (!data.students || data.students.length === 0) {
+        studentsDiv.innerHTML = `<p class="text-center text-gray-600">No students found.</p>`;
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = "table-auto w-full border-collapse border border-gray-300";
+      const thead = document.createElement('thead');
+      thead.innerHTML = `
+        <tr class="bg-blue-600 text-white">
+          <th class="border border-gray-300 px-4 py-2">Admission No</th>
+          <th class="border border-gray-300 px-4 py-2">Name</th>
+          <th class="border border-gray-300 px-4 py-2">Form</th>
+          <th class="border border-gray-300 px-4 py-2">Amount Billed</th>
+          <th class="border border-gray-300 px-4 py-2">Amount Paid</th>
+          <th class="border border-gray-300 px-4 py-2">Balance</th>
+          <th class="border border-gray-300 px-4 py-2">Action</th>
+        </tr>
+      `;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      data.students.forEach(student => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-100 cursor-pointer";
+        tr.innerHTML = `
+          <td class="border border-gray-300 px-4 py-2" data-prev=${student.latest_balance}>${student.adm}</td>
+          <td class="border border-gray-300 px-4 py-2">${student.name}</td>
+          <td class="border border-gray-300 px-4 py-2">${student.grade}</td>
+          <td class="border border-gray-300 px-4 py-2">${student.billed}</td>
+          <td class="border border-gray-300 px-4 py-2">${student.paid}</td>
+          <td class="border border-gray-300 px-4 py-2">${(student.billed - student.paid).toFixed(2)}</td>
+          <td class="border border-gray-300 px-4 py-2">
+            <button class="bg-blue-600 text-white px-2 py-1 rounded edit-btn" data-adm="${student.adm}" data-name="${student.name}" data-billed="${student.billed}" data-paid="${student.paid}">
+              Edit
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      studentsDiv.appendChild(table);
+
+      checkDetails();
+
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const btn = e.target;
+          const adm = btn.getAttribute('data-adm');
+          const name = btn.getAttribute('data-name');
+          const billed = btn.getAttribute('data-billed');
+          const paid = btn.getAttribute('data-paid');
+
+
+      openOverlay(adm, name, billed, paid);
+    });
+  });
+});
+}
+
+function openOverlay(adm, name, billed, paid) {
+document.getElementById('studentNameTitle').textContent = `Edit: ${name}`;
+document.getElementById('admHidden').value = adm;
+document.getElementById('billedInput').value = billed;
+document.getElementById('paidInput').value = paid;
+document.getElementById('balanceOutput').value = (billed - paid).toFixed(2);
+document.getElementById('studentOverlay').classList.remove('hidden');
+}
+
+function closeOverlay() {
+document.getElementById('studentOverlay').classList.add('hidden');
+}
+</script>
+</body>
+</html>

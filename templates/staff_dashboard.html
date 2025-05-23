@@ -22,6 +22,7 @@
                     <th>Phone</th>
                     <th>Form</th>
                     <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,6 +37,18 @@
                                 <span class="cl-gr">Active</span>
                             {% else %}
                                 <span class="cl-rd">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.is_admin %}
+                            <b></b>
+                            {% else %}
+                            {% if t.is_active %}
+                            <a href="/actions/delete/{{ t.id }}" class="cl-r bg-w t-d-n" title="Delete"><i class="fas fa-trash"></i></a><i style="color: #0000;">___</i>|<i style="color: #0000;">___</i>
+                            <a href="/actions/suspend/{{ t.id }}" title="Suspend"> <i class="fas fa-pause"></i> </a>
+                            {% else %}
+                            <a href="/actions/activate/{{ t.id }}" title="Activate"> <i class="fas fa-play"></i> </a>
+                            {% endif %}
                             {% endif %}
                         </td>
                     </tr>

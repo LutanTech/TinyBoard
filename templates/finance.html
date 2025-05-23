@@ -12,8 +12,8 @@
             <p>Total Balance: <span class="cl-bl">{{student.balance}}</span></p>
         </div>
         <div class="div flex gap-5">
-            <button data-href="finances?dest=statements" type="button" class="btn-s-pri bg-bl-0 bdr-40" onclick="window.location = this.getAttribute('data-href')"  style="max-height: 50px !important;"> <i class="fas fa-file cl-w"></i> View Statements</button>
-            <button type="button" data-href="finances?dest=receipts" class="btn-s-pri bg-bl-0 bdr-40 mxw-300" onclick="window.location = this.getAttribute('data-href')"  style="max-height: 50px !important;"><i class="fas fa-receipt cl-w"></i> View Receipts</button>
+            <button data-href="finances/statements" type="button" class="btn-s-pri bg-bl-0 bdr-40" onclick="window.location = this.getAttribute('data-href')"  style="max-height: 50px !important;"> <i class="fas fa-file cl-w"></i> View Statements</button>
+            <button type="button" data-href="finances/receipts" class="btn-s-pri bg-bl-0 bdr-40 mxw-300" onclick="window.location = this.getAttribute('data-href')"  style="max-height: 50px !important;"><i class="fas fa-receipt cl-w"></i> View Receipts</button>
         </div>
         <form action="/make_payment?mode=bank" class="make div form flex row n-wrap bank-form" method="post">
             <button type="submit" class="bank-btn">BANK</button>
@@ -23,7 +23,4 @@
         </form>
 </div>
 {% endblock %}
-
-https://pngtree.com/freepng/character-default-avatar_5407167.html
-
 

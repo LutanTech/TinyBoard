@@ -36,7 +36,7 @@ app.config['JWT_SECRET_KEY'] = 'not_really_a_secret_key'
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-login_manager.login_view = 'portal'
+login_manager.login_view = '/'
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
@@ -48,6 +48,10 @@ CORS(app)
 
 def generate_rand_id(length=6):
     characters = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(characters) for _ in range(length))
+
+def generate_short_rand_id(length=3):
+    characters = string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
 
 class School(UserMixin, db.Model):
@@ -163,7 +167,7 @@ class Grade(db.Model):
     exam1 = db.Column(db.Integer, nullable=True, default=0)
     exam2 = db.Column(db.Integer, nullable=True, default=0)
 
-    subject = db.relationship('Subject', backref='grades')
+    subject = db.relationship('Subject', back_populates='grades')
 
     @hybrid_property
     def total(self):
@@ -178,11 +182,12 @@ class Transcript(db.Model):
 
 class Subject(db.Model):
     __tablename__ = 'subject'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, default=generate_short_rand_id, unique=True)
     name = db.Column(db.String(300), nullable=False)
     abr = db.Column(db.String(50), nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    teacher_id = db.Column(db.String, db.ForeignKey('teacher.id'), nullable=False)
     grade = db.Column(db.String, db.ForeignKey('teacher.grade'))
+    grades = db.relationship('Grade', back_populates='subject', cascade='all, delete-orphan')
 
 
 class Receipt(db.Model):
@@ -191,11 +196,25 @@ class Receipt(db.Model):
     billed = db.Column(db.Integer, nullable=False)
     paid = db.Column(db.Integer, nullable=False)
     balance = db.Column(db.Integer, nullable=False)
+    amount_paid = db.Column(db.Integer, nullable=False)
     receipt_data = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    payment_type = db.Column(db.String(50), nullable=True)
+    transaction_code = db.Column(db.String(100), nullable=True)
 
+    
+    
     student = db.relationship('Student', backref=db.backref('receipts', lazy=True))
-
+class PendingTransfer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
+    from_teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    to_teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    status = db.Column(db.String(10), default='pending') 
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    subject = db.relationship('Subject', backref='pending_transfers')
+    from_teacher = db.relationship('Teacher', foreign_keys=[from_teacher_id])
+    to_teacher = db.relationship('Teacher', foreign_keys=[to_teacher_id])
 
 class SearchForm(FlaskForm):
     query = StringField('Search', validators=[DataRequired()])
@@ -325,18 +344,32 @@ def cashier():
     school = School.query.first()
     students = Student.query.all()
 
-    return jsonify({
-        "school": school.to_dict() if school else {},
-        "students": [{
+    student_list = []
+    for s in students:
+        receipts = Receipt.query.filter_by(student_id=s.id).order_by(Receipt.created_at.desc()).limit(2).all()
+
+        latest = receipts[0] if len(receipts) > 0 else None
+        previous = receipts[1] if len(receipts) > 1 else None
+
+        student_list.append({
             'id': s.id,
             'name': s.name,
             'adm': s.adm,
             'grade': s.grade,
-            "billed": s.billed,
-            "paid": s.paid,
-            "balance": s.balance
-        } for s in students]
+            'billed': s.billed,
+            'paid': s.paid,
+            'balance': s.balance,
+            'latest_id': latest.id if latest else None,
+            'latest_balance': latest.balance if latest else None,
+            'previous_id': previous.id if previous else None,
+            'previous_balance': previous.balance if previous else None,
+        })
+
+    return jsonify({
+        "school": school.to_dict() if school else {},
+        "students": student_list
     })
+
 
 
 
@@ -432,7 +465,17 @@ def profile():
     dest = request.args.get('dest')
     teacher = Teacher.query.get(session.get('staff_id'))
     school = School.query.first()
-    return render_template('profile.html', school=school, teacher=teacher, dest=dest if dest else None )
+    
+    available_ids = [generate_rand_id() for _ in range(6)]
+
+    return render_template(
+        'profile.html',
+        school=school,
+        teacher=teacher,
+        dest=dest if dest else None,
+        available_ids=available_ids
+    )
+
 
 
 
@@ -474,7 +517,7 @@ def staff_dashboard():
         return redirect(url_for('staff_logout'))
 
     students = Student.query.filter_by(grade=teacher.grade).all()
-    teachers = Teacher.query.filter_by(is_active=True).all()
+    teachers = Teacher.query.all()
     print(f"School is: {school}")
     if teacher.name == 'Default' and (not school or school is None):
         flash('Add School Details First', 'info')
@@ -568,6 +611,12 @@ def update_school():
 
     return redirect(url_for("profile")) 
 
+@app.route('/test_generate_receipt')
+def test_generate():
+    student = Student.query.first()
+    return str(generate_receipt(student.id, generate_rand_id(), student.adm, 5000, 3000))
+
+
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
@@ -581,6 +630,12 @@ def update_finances():
     adm = data.get('adm')
     billed = data.get('billed')
     paid = data.get('paid')
+    p_type = data.get('payment_type')
+    tr_code = data.get('transaction_code')
+    print('Ptype:', p_type,' and TR ID', tr_code)
+    prevdata = data.get('prevBalance')
+    prev = int(prevdata) if prevdata else int(paid)
+
 
     if adm is None or billed is None or paid is None:
         return jsonify({'message': '❌ Missing adm, billed, or paid', 'icon':'error'}), 400
@@ -593,10 +648,10 @@ def update_finances():
         student.billed = int(billed)
         student.paid = int(paid)
         db.session.commit()
-
+        paid_amount = int(prev - student.balance)
         receipt_id = generate_rand_id()
-        generate_receipt(student.id, receipt_id, adm, billed, paid)
-        print('Generating Receipt...')
+        generate_receipt(student.id, receipt_id, adm, billed, paid, p_type, tr_code, paid_amount)
+        print(f'Generating Receipt...{paid_amount}')
         return jsonify({
             'message': '✅ Student finance updated successfully',
             'icon': 'success',
@@ -623,39 +678,60 @@ from io import BytesIO
 import qrcode
 import json
 
-def generate_receipt(st_id, receipt_id, adm, billed, paid):
+
+def generate_receipt(st_id, receipt_id, adm, billed, paid, p_type, transaction_code, amount_paid):
+    print(f"📬 Entered generate_receipt() with data {st_id, receipt_id, adm, billed, paid, p_type, transaction_code }")
     try:
+        billed=int(billed)
+        paid=int(paid)
         balance = int(billed - paid)
-        qr_data = json.dumps({
+
+
+        qr_data_dict = {
             "receipt_id": receipt_id,
             "adm": adm,
             "billed": billed,
             "paid": paid,
             "balance": balance,
-            "date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        })
+            "date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "transaction_code":transaction_code,
+            "payment type": p_type,
+            "Amount Paid":amount_paid
+        }
+
+        if p_type and transaction_code:
+            qr_data_dict["transaction_code"] = transaction_code
+
+        qr_data = json.dumps(qr_data_dict)
 
         img = qrcode.make(qr_data)
         buf = BytesIO()
         img.save(buf, format='PNG')
         buf.seek(0)
 
-        # Proper base64 encoding
         encoded_qr = base64.b64encode(buf.getvalue()).decode('utf-8')
+        student = Student.query.filter_by(adm=adm).first()
+        print('prev bal',student.balance)
+        print('balance',balance)
+        if p_type:
+            print(f"Payment: {p_type}")
+            new_receipt = Receipt(
+                student_id=st_id,
+                id=receipt_id,
+                billed=billed,
+                paid=paid,
+                balance=balance,
+                receipt_data=encoded_qr,
+                payment_type=p_type,           
+                transaction_code=transaction_code or None, 
+                created_at=datetime.utcnow(), 
+                amount_paid=amount_paid
+            )
 
-        new_receipt = Receipt(
-            student_id=st_id,
-            id=receipt_id,
-            billed=billed,
-            paid=paid,
-            balance=balance,
-            receipt_data=encoded_qr  # store as string
-        )
-
-        db.session.add(new_receipt)
-        db.session.commit()
-
-        flash("Receipt generated successfully!", "success")
+            db.session.add(new_receipt)
+            db.session.commit()
+            print("Receipt generated successfully!", "success")
+            return new_receipt
 
     except Exception as e:
         db.session.rollback()
@@ -778,14 +854,15 @@ def staff_portal():
         password = request.form.get('password')
         staff = Teacher.query.filter_by(id=id).first()
         if staff and staff.check_password(password):
-            login_user(staff)
-            session["staff_id"] = staff.id
-            return redirect(url_for('staff_dashboard'))
+            if staff.is_active:
+                login_user(staff)
+                session["staff_id"] = staff.id
+                return redirect(url_for('staff_dashboard'))
+            flash('Your account is inactive. Please visit IT office', 'info')
+            return redirect(url_for('staff_portal'))
+
         flash("Invalid ID or password!", "error")
     staff = Teacher.query.get(session.get('staff_id'))
-    if staff:
-        flash("Auto Recovered Session!", "success")
-        return redirect(url_for('staff_dashboard'))
     return render_template("staff_login.html", school=school)
 
 @app.route('/add_school', methods=['POST'])
@@ -1023,31 +1100,84 @@ def update_grade():
     }), 200
 
 
+
 @app.route('/finances')
 @login_required
 def finances():
     school = School.query.first()
     student = Student.query.get(session.get('student_id'))
-    dest = request.args.get('dest')
-    return render_template('finance.html', dest=dest, student=student, school=school)
 
+    return render_template('finance.html', student=student, school=school)
+
+@app.route('/finances/receipts', methods=['POST', 'GET'])
+def get_receipts():
+    if request.method == 'POST':
+        student = Student.query.get(session.get('student_id'))
+        receipts = Receipt.query.filter_by(student_id=student.id).all()
+        old_bal = student.balance
+        print(old_bal)
+        school = School.query.first()
+        print(receipts, student.id)
+        receipt_list = [{
+            'id': r.id,
+            'billed': r.billed,
+            'paid': r.paid,
+            'balance': r.balance,
+            'receipt_data': r.receipt_data,
+            'tr_code':r.transaction_code,
+            'type':r.payment_type or 'Cash',
+            'created_at': r.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'amount_paid':r.amount_paid
+        } for r in receipts]
+
+        school_dets = {
+            'name': school.name,
+            'id': school.id,
+            'logo': school.logo,
+            'motto': school.motto,
+            'address': school.address,  
+            'email': school.email,
+            'phone': school.phone,
+            'phone2': getattr(school, 'phone2', '')  
+        }
+
+        return jsonify({
+            'student': {
+                'id': student.id,
+                'name': student.name,
+                'adm': student.adm,
+                'grade': student.grade
+            },
+            'receipts': receipt_list,
+            'school': school_dets 
+        })
+
+    return render_template('receipts.html')
+
+    
 @app.route("/subjects")
 def subjects():
     school = School.query.first()
-    id = session.get('staff_id')
+    teacher_id = session.get('staff_id')
+    student_id = session.get('student_id')
     id2 = session.get('student_id')
-    if id and request.method == 'GET':
-        teacher = Teacher.query.get(session.get('staff_id'))
+
+    # If a teacher is logged in and it's a GET request
+    if teacher_id and request.method == 'GET':
+        teacher = Teacher.query.get(teacher_id)
         students = Student.query.filter_by(grade=teacher.grade).all()
-        subjects = Subject.query.filter_by(teacher_id=id).all()
-        subject_list = [{"id": subject.id, "abr": subject.abr, 'grade' : subject.grade} for subject in subjects]
+        subjects = Subject.query.filter_by(teacher_id=teacher_id).all()
+        subject_list = [{"id": sub.id, "abr": sub.abr, "grade": sub.grade} for sub in subjects]
+
+        pending_transfers = PendingTransfer.query.filter_by(to_teacher_id=teacher.id, status='pending').all()
 
         return render_template(
             "subjects.html",
             teacher=teacher,
             students=students,
             subjects=subject_list,
-            school=school
+            school=school,
+            pending_transfers=pending_transfers
         )
     if id2:
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -1158,8 +1288,6 @@ def subject():
 
 
 
-
-
 @app.route('/add_subject', methods=['POST'])
 def add_subject():
     name = request.form.get('name')
@@ -1190,29 +1318,23 @@ def add_subject():
         db.session.flush()
 
         students = Student.query.filter_by(grade=grade).all()
-        for student in students:
-            new_grade = Grade(
-                subject_id=new_subject.id,
-                teacher_id=teacher.id,
-                student_adm=student.adm
-            )
-            db.session.add(new_grade)
-            db.session.commit()
+        grade_entries = [
+            Grade(subject_id=new_subject.id, teacher_id=teacher.id, student_adm=student.adm)
+            for student in students
+        ]
+        db.session.add_all(grade_entries)
         db.session.commit()
 
         flash(f'Subject "{name}" added with grade entries for students.', 'success')
-        return redirect(url_for('subjects'))
-
     except Exception as e:
         db.session.rollback()
-        # Log the error and show a more detailed message to the user
         flash(f'Failed to add subject "{name}". Error: {str(e)}', 'error')
-        return redirect(url_for('subjects'))
+
+    return redirect(url_for('subjects'))
 
 @app.route('/change_class/<teacher_id>', methods=['POST'])
 def change_teacher_class(teacher_id):
     new_grade = request.form.get('new_grade')
-
     if not new_grade:
         return jsonify({'status': 'error', 'message': 'New grade is required'}), 400
 
@@ -1225,42 +1347,157 @@ def change_teacher_class(teacher_id):
         return jsonify({'status': 'error', 'message': 'Teacher is already assigned to this grade'}), 400
 
     teacher.grade = new_grade
-
-
+    
     students_to_update = Student.query.filter_by(grade=old_grade).all()
     for student in students_to_update:
         student.grade = new_grade
 
-    subjects_to_delete = Subject.query.filter_by(teacher_id=teacher.id, grade=old_grade).all()
-    for subject in subjects_to_delete:
-        db.session.delete(subject)
+    subjects_to_update = Subject.query.filter_by(teacher_id=teacher.id, grade=old_grade).all()
+    for subject in subjects_to_update:
+        subject.grade = new_grade
 
     try:
         db.session.commit()
-        return jsonify({
-            'status': 'success',
-            'message': f"Grade changed to '{new_grade}'. {len(students_to_update)} students moved 🚀 and previous class' {len(subjects_to_delete)} subjects deleted ."
-        })
+        flash(f"Grade changed to '{new_grade}'. {len(students_to_update)} students moved and {len(subjects_to_update)} subjects updated.", "success")
+        return redirect(url_for('profile'))
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': f'Commit failed: {str(e)}'}), 500
+        flash('An error occured.', 'error')
+    return redirect(url_for('profile'))
+
+@app.route('/actions/<string:action>/<string:tr_id>')
+def actions(action, tr_id):
+    teacher = Teacher.query.filter_by(id=tr_id).first()
+    allowed_actions = ['delete', 'suspend', 'activate']
+
+    if not teacher:
+        flash('Teacher not found. Are they hiding? 👀', 'error')
+        return redirect(url_for('staff_dashboard'))
+
+    if action in allowed_actions:
+        if action == "delete":
+            db.session.delete(teacher)  
+            db.session.commit()
+            flash(f"{teacher.name} deleted successfully ", 'success')
+        elif action == "suspend":
+            teacher.is_active = False
+            db.session.commit()
+            flash(f"{teacher.name} suspended indefinitely ", 'success')
+        elif action == "activate":
+            teacher.is_active = True
+            db.session.commit()
+            flash(f"{teacher.name} activated succesfully ", 'success')
+    else:
+        flash('Action not allowed ', 'error')
+    
+    return redirect(url_for('staff_dashboard'))
+
+@app.route('/change_id/<string:id>', methods=["POST"])
+def change_ID(id):
+    new_id=request.form.get("new_id")
+    teacher = Teacher.query.filter_by(id=id).first()
+    if teacher.is_admin:
+        teacher.id=new_id
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occured. {str(e)}', 'error')
+            return redirect(url_for('profile'))
+        flash('ID changed succesfully. Please login again with your ned ID', 'success')
+        return redirect(url_for('profile'))
+    flash('Action performed by only ADMIN', 'info')
+    return redirect(url_for('profile'))
+
 
 @app.route('/drop_subject/<int:subject_id>/<teacher_id>', methods=['POST'])
-
 def drop_subject(subject_id, teacher_id):
     subject = Subject.query.get(subject_id)
-
     if not subject:
         return jsonify({'status': 'error', 'message': 'Subject not found.'})
 
+    if str(subject.teacher_id) != str(teacher_id):
+        return jsonify({'status': 'error', 'message': 'Unauthorized drop attempt.'})
+
     try:
+        Grade.query.filter_by(subject_id=subject_id).delete()
         db.session.delete(subject)
         db.session.commit()
         return jsonify({'status': 'success', 'message': 'Subject dropped successfully!'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': 'Failed to drop subject.'})
+        return jsonify({'status': 'error', 'message': f'Failed to drop subject: {str(e)}'})
 
+@app.route('/transfer_subject', methods=['POST'])
+def transfer_subject():
+    data = request.form
+    current_teacher = data.get('current_teacher')
+    s_id = data.get('s_id')
+    to_id = data.get('to_id')
+
+    try:
+        s_id = int(s_id)
+    except ValueError:
+        flash('Invalid subject ID.', 'error')
+        return redirect(url_for('subjects'))
+
+    subject = Subject.query.get(s_id)
+    if not subject:
+        flash('No subject found.', 'error')
+        return redirect(url_for('subjects'))
+
+    if str(subject.teacher_id) != str(current_teacher):
+        flash('Teacher ID mismatch.', 'error')
+        return redirect(url_for('subjects'))
+
+    new_teacher = Teacher.query.get(to_id)
+    if not new_teacher:
+        flash('The new teacher does not exist.', 'error')
+        return redirect(url_for('subjects'))
+
+    existing = PendingTransfer.query.filter_by(
+        subject_id=s_id, from_teacher_id=current_teacher, to_teacher_id=to_id, status='pending'
+    ).first()
+
+    if existing:
+        flash('A pending transfer already exists for this subject.', 'info')
+        return redirect(url_for('subjects'))
+
+    transfer = PendingTransfer(
+        subject_id=s_id,
+        from_teacher_id=current_teacher,
+        to_teacher_id=to_id,
+    )
+    db.session.add(transfer)
+    db.session.commit()
+    flash('Transfer request sent! Awaiting new teacher\'s approval.', 'success')
+    return redirect(url_for('subjects'))
+
+@app.route('/respond_transfer/<int:transfer_id>/<action>')
+def respond_transfer(transfer_id, action):
+    transfer = PendingTransfer.query.get_or_404(transfer_id)
+    if transfer.status != 'pending':
+        flash('This transfer request has already been processed.', 'info')
+        return redirect(url_for('subjects'))
+
+    if action == 'accept':
+        subject = Subject.query.get(transfer.subject_id)
+        grades = Grade.query.filter_by(subject_id=subject.id).all()
+        subject.teacher_id = transfer.to_teacher_id
+        for grade in grades:
+            grade.teacher_id = transfer.to_teacher_id
+        transfer.status = 'accepted'
+        flash('You have accepted the transfer.', 'success')
+    elif action == 'decline':
+        transfer.status = 'declined'
+        flash('You have declined the transfer.', 'info')
+    else:
+        flash('Invalid action.', 'error')
+        return redirect(url_for('subjects'))
+
+    db.session.commit()
+    return redirect(url_for('subjects'))
 
 
 @app.route("/update_teacher", methods=["POST"])

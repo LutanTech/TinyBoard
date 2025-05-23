@@ -127,6 +127,8 @@ margin: 2px auto;
         border-radius: 2px;
         outline: 2px solid white;
         cursor: pointer;
+        background-color: #020063;
+        color: white;
         &:active{
             scale: 0.98;
         }

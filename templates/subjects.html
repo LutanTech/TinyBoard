@@ -4,13 +4,74 @@
 <link rel="stylesheet" href="../static/css/main/dshb.css">
 <link rel="stylesheet" href="../static/css/imports/tailwind.css">
 
-<div class="max-w-7xl mx-auto px-4 py-8">
+
+<div class="max-w-7xl mx-auto px-4 py-8 flex wrap">
+    {% if pending_transfers %}
+  <div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-4 c-p mg-au" role="alert" style="max-height: 40px;" onclick="toggleOverlay()">
+    You have pending transfer requests!
+  </div>
+  <hr class="" style="width: 100vh; min-width: 100%;">
+
+{% endif %}
+    <div class="overlay none ps-fx t-o b-0 l-0 r-0 bg-b-0 mg-0 jst-cn aln-cn h-100 w-100 col">
+        <button class="s-btn-pri bg-or cl-bk pd-10 bdr-5 " onclick="toggleOverlay()">Close</button>
+    <table class="border border-gray-300 mt-6 bg-w mxw-500" style="max-width: 600px !important;">
+        <thead class="bg-gray-800 text-white">
+          <tr>
+            <th class="py-2 px-4 border border-gray-600">Subject</th>
+            <th class="py-2 px-4 border border-gray-600">From</th>
+            <th class="py-2 px-4 border border-gray-600">Requested At</th>
+            <th class="py-2 px-4 border border-gray-600">Status</th>
+            <th class="py-2 px-4 border border-gray-600">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for transfer in pending_transfers %}
+            <tr class="even:bg-gray-100 odd:bg-white">
+              <td class="py-2 px-4 border border-gray-300">{{ transfer.subject.name }}</td>
+              <td class="py-2 px-4 border border-gray-300">{{ transfer.from_teacher.name }}</td>
+              <td class="py-2 px-4 border border-gray-300">{{ transfer.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td class="py-2 px-4 border border-gray-300">
+                {% if transfer.status == 'pending' %}
+                  <span class="inline-block px-2 py-1 text-yellow-800 bg-yellow-200 rounded">Pending</span>
+                {% elif transfer.status == 'accepted' %}
+                  <span class="inline-block px-2 py-1 text-green-800 bg-green-200 rounded">Accepted</span>
+                {% else %}
+                  <span class="inline-block px-2 py-1 text-red-800 bg-red-200 rounded">Declined</span>
+                {% endif %}
+              </td>
+              <td class="py-2 px-4 border border-gray-300 space-x-2">
+                {% if transfer.status == 'pending' %}
+                  <a href="{{ url_for('respond_transfer', transfer_id=transfer.id, action='accept') }}" class="inline-block bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">Accept</a>
+                  <a href="{{ url_for('respond_transfer', transfer_id=transfer.id, action='decline') }}" class="inline-block bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Decline</a>
+                {% else %}
+                  <span class="text-gray-500 italic">No action needed</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-gray-500 italic py-4">No pending transfer requests.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <script>
+        function toggleOverlay(){
+        const overlay = document.querySelector('.overlay')
+
+            overlay.classList.toggle('flex')
+            overlay.classList.toggle('none')
+        }
+    </script>
     <div class="flex flex-wrap gap-5 justify-center mb-10">
         {% if subjects %}
             {% for subject in subjects %}
-            <div id="subject-card-{{ subject.id }}" class="bg-gradient-to-r from-green-200 via-white to-cyan-100 border border-gray-300 rounded-xl shadow-md p-6 w-64 text-center transition-opacity duration-500">
+            <div id="subject-card-{{ subject.id }}" class="bg-gradient-to-r from-green-200 via-white to-cyan-100 border border-gray-300 rounded-xl shadow-md p-6 w-64 text-center transition-opacity duration-500" style="max-height: 150px;">
                 <span>Subject:  </span><span class="text-lg font-semibold text-black-700 cl-bl">{{ subject.abr }}</span><br>
                 <h2 class="text-md text-gray-600 mt-1">Form/Stream: <span class="font-medium">{{ subject.grade }}</span></h2>
+                <h2 class="text-md text-gray-600 mt-1">ID: <span class="font-medium">{{ subject.id }}</span></h2>
                 <button type="button"
                         class="mt-4 w-full py-2 px-4 rounded-full bg-green-500 text-white hover:bg-blue-600 transition-colors duration-300"
                         onclick="confirmDrop('{{ subject.id }}', '{{ teacher.id }}')"
@@ -20,8 +81,9 @@
             </div>
             {% endfor %}
         {% else %}
-            <div class="bg-white border border-gray-300 rounded-xl shadow p-6">
+            <div class="bg-white border border-gray-300 rounded-xl shadow p-6 w-v100 mg-au w-100" style="max-height: 40px; flex-shrink: 0;" >
                 <p class="text-center font-semibold text-gray-600">You haven't added any subjects</p>
+                
             </div>
         {% endif %}
     </div>
@@ -46,6 +108,17 @@
             Add Subject
         </button>
     </form>
+  <hr class="" style="width: 100vh; min-width: 100%;">
+    
+    <h1 class="f-s-xl bldr cl-bk txt-cn w-100">Transfer  A subject</h1>
+    <form action="/transfer_subject" method="POST" class="bg-white border border-gray-200 rounded-xl shadow p-6 w-full max-w-md mx-auto space-y-4 col flex">
+        <input type="text" name="current_teacher" id="from" value="{{ current_user.id }}" class="txt-cn bld hidden" readonly style="outline:none;" required>
+        <label for="s_id">Subject ID to tranfer: </label>
+        <input type="text" name="s_id" id="s_id" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" placeholder="Enter Subject's ID" required>
+        <label for="to">To:</label>
+        <input type="text" name="to_id" id="to_id" class="w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent py-2 text-center" placeholder="Enter The ID of the teacher to tranfer to" required>
+        <button type="submit">Transfer</button>
+    </form>
 </div>
 
 <!-- Loading Spinner -->
@@ -57,21 +130,17 @@
 function confirmDrop(subjectId, teacherId) {
     Swal.fire({
         title: "Are you sure?",
-        text: "This will permanently delete the subject!",
+        text: "This will permanently delete the subject and all student grades of your subject!",
         icon: "warning",
         showCancelButton: true,
         confirmButtonText: "Yes, delete it!"
     }).then((result) => {
         if (result.isConfirmed) {
-            // Show the loading spinner
-            // document.getElementById("loading-spinner").classList.remove("hidden");
-
+            Swal.showLoader()
             fetch(`/drop_subject/${subjectId}/${teacherId}`, { method: 'POST' })
             .then(res => res.json())
             .then(data => {
-                // Hide the loading spinner
-                // document.getElementById("loading-spinner").classList.add("hidden");
-
+               Swal.showLoader()
                 if (data.status === 'success') {
                     Swal.fire({
                         icon: 'success',

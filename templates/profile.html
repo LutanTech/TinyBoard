@@ -31,9 +31,14 @@
   <div class="card-sp cursor-pointer px-4 py-2 bg-green-100 hover:bg-green-200 rounded col shadow flex items-center gap-2 mnw-300" data-href="notifications">
     <i class="fas fa-bell text-green-700"></i> Add Notification
   </div>
+  {% if current_user.is_admin %}
   <div class="card-sp cursor-pointer px-4 py-2 bg-yellow-100 hover:bg-yellow-200 col rounded shadow flex items-center mnw-300 gap-2" data-href="school">
-    <i class="fas fa-school text-yellow-700"></i> Edit School
+    <i class="fas fa-school text-yellow-700"></i> Edit School Dets
   </div>
+  <div class="card-sp cursor-pointer px-4 py-2 bg-yellow-100 hover:bg-yellow-200 col rounded shadow flex items-center mnw-300 gap-2" data-href="id">
+    <i class="fas fa-user text-yellow-700"></i> Edit Default ID
+  </div>
+  {% endif %}
   <div class="card-sp cursor-pointer px-4 py-2 bg-purple-100 hover:bg-purple-200 col rounded shadow flex items-center mnw-300 gap-2" data-href="change_class">
     <i class="fas fa-exchange-alt text-purple-700"></i> Change Class
   </div>
@@ -62,11 +67,60 @@
   </form>
 </div>
   <div class="changeClass none" >
-    <form id="change-class-form" class="cl-bl w-full md:w-1/2 p-6 bg-white shadow-md rounded space-y-4">
+    <form id="change-class-form" class="cl-bl w-full md:w-1/2 p-6 bg-white shadow-md rounded space-y-4 " action="/change_class/{{ current_user.id }}" method="POST">
       <h2 class="text-lg font-semibold text-gray-700">Change Class / To Next Class</h2>
       <input type="text" name="new_grade" class="w-full border p-2 rounded" placeholder="Enter new Form or Stream" required>
       <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Change Class</button>
     </form>
+</div>
+{% if current_user.is_admin %}
+<div class="id none">
+  <form action="/change_id/{{ current_user.id }}" class="div flex col bg-w mg-5 cl-bk idForm" method="POST">
+    <div class="buttons-div flex row wrap gap-5 mg-5">
+      {% if available_ids %}
+      <h1>Available IDs (Choose One). Please memorize it before changing</h1>
+      <hr class="w-100">
+      {% for id in available_ids %}
+      <button 
+        type="button" 
+        class="pd-5 bdr-5 bld bg-gr-0 cl-bk c-p txt-cn"
+        onclick="handleIDChange('{{ id }}')">
+        {{ id }}
+      </button>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script>
+  function handleIDChange(chosenId) {
+    const form = document.querySelector('.idForm');
+    if (!form) return console.error('Form not found');
+
+    Swal.fire({
+      icon: 'warning',
+      title: 'Confirm ID Change',
+      text: `This action can cause loss of student marks and access to the system. Please confirm you want to change your ID to ${chosenId}.`,
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Change It!',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'new_id';
+        hiddenInput.value = chosenId;
+        form.appendChild(hiddenInput);
+        form.submit();
+      }
+    });
+  }
+</script>
+
+
+
+
 </div>
 <div class="school none">
     <form id="school-details" action="/update_school" method="POST" class="cl-bl w-full md:w-1/2 p-6 bg-white shadow-md rounded space-y-4 mnw-300 cl-bl" style="width:90% !important">
@@ -98,9 +152,11 @@
       <input type="submit" value="Update" class="bg-gr-0 bdr-40 bd-0 c-p mg-5 pd-10 " style="width: 100px;">
     </form>
   </div>
-
+{% endif %}
    <div class="notification none ">
   <form id="add_notification" action="/add_notification" method="POST" class="cl-bl w-full max-w-md p-6 bg-white shadow-md rounded space-y-4">
+    <input type="text" name="date" id="date" class="w-full p-2 rounded txt-cn bld" title="Date Posted" required readonly style="outline: none !important;">
+
     <input type="text" name="title" id="title" class="w-full border p-2 rounded" placeholder="Notification Title Eg. Exams, Fees, Games" required>
 
     <label for="priority" class="block text-sm font-medium text-gray-700">Priority</label>
@@ -111,9 +167,8 @@
       <option value="high">High</option>
     </select>
 
-    <textarea name="content" id="content" rows="4" class="w-full border p-2 rounded resize-y" placeholder="Notification Content"></textarea>
+    <textarea name="content" id="content" rows="4" class="w-full border p-2 rounded resize-y" placeholder="Notification Content" style="max-height: 30em;"></textarea>
 
-    <input type="text" name="date" id="date" class="hidden">
     <input type="file" id="pic-input1" class="w-full border p-2 rounded"  oninput="handleImageInput('#pic-input1', '#pic1')" accept="application/pdf">
     <input type="text" id="pic1" name="pdf" class="hidden">
 
@@ -136,14 +191,22 @@
 {% endif %}
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
+  function updateDate(){
+    const now = new Date();
+    const formatted = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString();
+    document.getElementById('date').value = formatted;
+  }
+  setInterval(()=>{
+updateDate()
+  }, 1000)
+
+  document.addEventListener('DOMContentLoaded', () => { 
     const form = document.getElementById('add_notification');
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const now = new Date();
-      const formatted = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString();
-      document.getElementById('date').value = formatted;
+      updateDate()
       setTimeout(() => form.submit(), 1000);
+      
     });
 
     document.getElementById("change-class-form").addEventListener("submit", function (e) {
@@ -182,7 +245,8 @@
     personal: document.querySelector('.personal'),
     notifications: document.querySelector('.notification'),
     change_class: document.querySelector('.changeClass'),
-    school: document.querySelector('.school')
+    school: document.querySelector('.school'),
+    id: document.querySelector('.id')
   };
 
   popup.classList.toggle('flex');
@@ -201,8 +265,8 @@
     element.innerHTML = ''; 
   } else {
     inner.innerHTML = `
-      <h1 class='bldr f-s-xl cl-w txt-cn pd-10 bg-gr' style='margin-top:50px !important'>
-        Please choose what to Edit
+      <h1 class='bldr f-s-xl cl-w txt-cn pd-10 bg-or' style='margin-top:50px !important'>
+        Unauthorised Access. Please Contact the personell incharge
       </h1>`;
   }
 }
@@ -218,7 +282,7 @@
   }
      })
      window.onload = function () {
-    const keys = ['personal', 'school', 'notifications', 'change_class'];
+    const keys = ['personal', 'school', 'notifications', 'change_class', 'id'];
   keys.forEach(key => {
     localStorage.removeItem(`${key}_inner`);
     

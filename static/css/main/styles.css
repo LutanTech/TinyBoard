@@ -145,7 +145,7 @@ body, html {
 
 /* Menu Toggle */
 .menu-toggle {
-    background: rgb(3, 3, 76);
+    background: #2f9257;
     position: fixed;
     right: -35px;
     width: 40px;

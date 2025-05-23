@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Receipt Fetcher</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background-color: #f8f8f8;
+      padding: 20px;
+    }
+
+    .container {
+      border: 1px dashed #222;
+      padding: 30px;
+      margin: 30px auto;
+      background: #fff;
+      width: 720px;
+      position: relative;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .container::before {
+      content: "RECEIPT";
+      position: absolute;
+      font-size: 7rem;
+      color: rgba(0, 0, 0, 0.04);
+      transform: rotate(-30deg);
+      top: 40%;
+      left: 20%;
+      pointer-events: none;
+      font-weight: 900;
+      z-index: 0;
+    }
+
+    .header {
+      text-align: center;
+      border-bottom: 2px dashed #000;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header img {
+      max-height: 80px;
+      margin-bottom: 10px;
+    }
+
+    .info {
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .info h2 {
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .info img {
+      position: absolute;
+      right: 30px;
+      top: 30px;
+      width: 100px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    th, td {
+      border: 1px solid #000;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f0f0f0;
+    }
+
+    .balance-row {
+      font-weight: bold;
+      background-color: #fef6dd;
+    }
+
+    .footer {
+      border-top: 1px dashed #000;
+      padding-top: 10px;
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+      position: relative;
+      z-index: 1;
+    }
+
+    .print {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 20px;
+      background: #222;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      z-index: 1;
+      position: relative;
+    }
+
+    @media print {
+      .print {
+        display: none !important;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      .container {
+        box-shadow: none;
+        margin: 0;
+        width: 90% !important;
+      }
+
+      .receipt {
+        page-break-before: always;
+        page-break-inside: avoid;
+      }
+
+      .receipt:first-child {
+        page-break-before: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="receipts-container"></div> 
+
+  <script>
+    async function fetchReceipts() {
+      try {
+        const response = await fetch('/finances/receipts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+  
+        const { receipts, student, school } = await response.json();
+        console.log("Fetched data:", { receipts, student, school });
+  
+        const container = document.getElementById("receipts-container");
+        container.innerHTML = '';
+  
+        if (!receipts || receipts.length === 0) {
+          container.innerHTML = '<p>No receipts available 🫠</p>';
+          return;
+        }
+  
+        receipts.forEach((receipt, i) => {
+          const html = template(student, school, receipt);
+          console.log("Generated HTML for receipt", i, html);
+          const div = document.createElement('div');
+          div.innerHTML = html;
+          div.style.opacity = 0;
+          container.appendChild(div);
+          setTimeout(() => div.style.opacity = 1, 100);
+        });
+  
+      } catch (error) {
+        console.error("Error fetching receipts:", error);
+      }
+    }
+  
+    const template = (student, school, receipt) => `
+      <div class="receipt">
+        <div class="container">
+          <div class="header">
+            ${school.logo ? `<img src="${school.logo}" alt="${school.name || 'School'} Logo">` : ''}
+            <h1>${school.name || 'School Name'}</h1>
+            <p><em>${school.motto || ''}</em></p>
+            <p>${school.address || 'Address not set'}</p>
+            <p>Email: ${school.email || 'N/A'} | Phone: ${school.phone || 'N/A'}${school.phone2 ? `, ${school.phone2}` : ''}</p>
+          </div>
+  
+          <div class="info">
+            <h2>Fee Receipt</h2>
+            <p><b>REF:</b> ${receipt.id}</p>
+            <p style='text-transform:uppercase'><b>Payment Mode: </b>${receipt.type || 'Unspecified'} </p>
+            <p><b>TR ID:</b> ${receipt.tr_code}</p>
+            <p><strong>Student Name:</strong> ${student.name || 'N/A'}</p>
+            <p><strong>Adm No:</strong> ${student.adm || 'N/A'}</p>
+            <p><strong>Form:</strong> ${student.grade || 'N/A'}</p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            ${receipt.receipt_data ? `<img src="data:image/png;base64,${receipt.receipt_data}" alt="QR Code">` : ''}
+          </div>
+  
+          <table>
+            <tr><th>Description</th><th>Amount (KES)</th></tr>
+            <tr><td>Amount Paid</td><td>${(receipt.amount_paid).toFixed(2) || 0}</td></tr>
+            <tr><td>Total Billed</td><td>${(receipt.billed).toFixed(2) || 0}</td></tr>
+            <tr><td>Total Paid</td><td>${(receipt.paid).toFixed(2) || 0}</td></tr>
+            <tr class="balance-row"><td>Balance</td><td>${(receipt.balance).toFixed(2) || 0}</td></tr>
+          </table>
+  
+          <div class="footer">
+            Generated by Lutan Systems | ${new Date().toLocaleString()}
+          </div>
+  
+          <button class="print" onclick="this.style.display='none'; setTimeout(() => window.print(), 50);">🖨️ Print Receipt</button>
+          <button class="print" onclick="downloadAsPDF(this)">⬇️ Download PDF</button>
+        </div>
+      </div>
+    `;
+  
+    function downloadAsPDF(button) {
+      const element = button.closest('.receipt');
+      const opt = {
+        margin:       0.3,
+        filename:     'receipt.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().from(element).set(opt).save();
+    }
+  
+    fetchReceipts();
+  </script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
+</body>
+</html>
